@@ -12,6 +12,7 @@
 #include <TString.h>
 #include <TChain.h>
 #include <TH2F.h>
+#include <TF1.h>
 #include <TProfile2D.h>
 
 #include <AliReducedPairInfo.h>
@@ -303,7 +304,9 @@ class AliReducedVarManager : public TObject {
     kNtracksEventPlane, // number of tracks used for event plane                
     kNCaloClusters,     // number of calorimeter clusters
     kNTPCclusters,    // number of TPC clusters
-    kMultiplicity,
+    kMultV0Aring,
+    kMultV0Cring=kMultV0Aring+4,
+    kMultiplicity=kMultV0Cring+4,
     kSPDntracklets = kMultiplicity,
     kSPDntracklets08,
     kSPDntracklets16,
@@ -379,6 +382,9 @@ class AliReducedVarManager : public TObject {
     kTZEROpileup,                              // TZERO pileup flag
     kTZEROsatellite,                           // TZERO satellite flag
     // External Multiplicity estimators
+    kMultEstimatorV0M,
+    kMultEstimatorV0A,
+    kMultEstimatorV0C,
     kMultEstimatorOnlineV0M,
     kMultEstimatorOnlineV0A,
     kMultEstimatorOnlineV0C,
@@ -389,6 +395,9 @@ class AliReducedVarManager : public TObject {
     kMultEstimatorSPDTracklets,
     kMultEstimatorRefMult05,
     kMultEstimatorRefMult08,
+    kMultEstimatorPercentileV0M,
+    kMultEstimatorPercentileV0A,
+    kMultEstimatorPercentileV0C,
     kMultEstimatorPercentileOnlineV0M,
     kMultEstimatorPercentileOnlineV0A,
     kMultEstimatorPercentileOnlineV0C,
@@ -423,6 +432,7 @@ class AliReducedVarManager : public TObject {
     kThetaMC,
     kThetaMCfromLegs,
     kEta,
+    kEtaAbs,
     kEtaMC,
     kEtaMCfromLegs,
     kPhi,     
@@ -440,6 +450,7 @@ class AliReducedVarManager : public TObject {
     kRapMCfromLegs,
     kPdgMC,
     kCharge = kPdgMC+4,
+    kIsKink,                          // whether track is a kink
     kVZEROFlowVn,                     // v_n using VZERO RP
     kTPCFlowVn=kVZEROFlowVn+6*3,      // v_n using TPC RP
     kVZEROFlowSine=kTPCFlowVn+6,      // sin(n*(phi-Psi)) using VZERO RP
@@ -487,7 +498,9 @@ class AliReducedVarManager : public TObject {
     kDcaZTPC,    
     kPin,       
     kDcaXY,     
-    kDcaZ,              
+    kDcaZ,
+    kDcaXYAbs,
+    kDcaZAbs,
     kTrackLength,       // track length
     kChi2TPCConstrainedVsGlobal,
     kMassUsedForTracking,
