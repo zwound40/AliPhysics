@@ -169,6 +169,7 @@ class AliReducedVarManager : public TObject {
     kVertexCorrectionGlobalGainLoss,
     kVertexCorrectionRunwiseGainLoss,
     kVertexCorrection2D,
+    kGainLossCorrection,
     kNCorrections
   };
 
@@ -213,6 +214,7 @@ class AliReducedVarManager : public TObject {
     kL2TriggerInput2,    // L2 trigger input, used for correlations between inputs
     kRunNo,             // run number         
     kRunID,             // variable for easy filling of histograms vs. run number, without empty bins
+    kPeriod,            // period
     kBeamEnergy,        // LHC beam energy
     kDetectorMask,      // detector mask
     kNumberOfDetectors, // number of active detectors
@@ -227,6 +229,7 @@ class AliReducedVarManager : public TObject {
     kOnlineTriggerFired,  // online trigger fired
     kOnlineTriggerFired2,  // online trigger if fired, -1 if not fired
     kIsPhysicsSelection,    // physics selection 
+    kIsAnyPileup,
     kIsSPDPileup,          // whether is SPD pileup
     kIsSPDPileup5,          // whether is SPD pileup (5 vertex contributors)
     kIsPileupMV,            // pileup from multi vertexer
@@ -263,6 +266,7 @@ class AliReducedVarManager : public TObject {
     kNTracksTRDoutVsSPDtracklets,                        //  TRDout/SPDtracklets
     kNTracksTOFoutVsSPDtracklets,                        //  TOFout/SPDtracklets
     kNTracksTPCoutFromPileup,                       // number of tracks from (kNTracksPerTrackingStatus+kTPCout) minus the no-pileup expectation
+    kNTracksTPCoutFromPileupPP,                       // number of tracks from (kNTracksPerTrackingStatus+kTPCout) minus the no-pileup expectation, optimized for pp
     kNTracksTPCoutVsVZEROTotalMult,      // number of kTPCout tracks / VZERO multiplicity
     kCentVZERO,         // centrality from VZERO
     kCentSPD,           // centrality from SPD
@@ -276,6 +280,7 @@ class AliReducedVarManager : public TObject {
     kNV0total,          // total number of V0s in the esd      
     kNV0selected,       // number of V0s selected              
     kNpairsSelected,    // number of selected pairs per event  
+    kNOSpairsSelected,    // number of selected opposite sign pairs per event  
     kEvAverageTPCchi2,   // average TPC chi2 for the tracks in a given event
     kNDplusToK0sPiplusSelected,       // D+           -> K0s pi+
     kNDplusToK0sKplusSelected,        // D+           -> K0s K+
@@ -308,7 +313,9 @@ class AliReducedVarManager : public TObject {
     kMultV0Cring=kMultV0Aring+4,
     kMultiplicity=kMultV0Cring+4,
     kSPDntracklets = kMultiplicity,
+    kSPDntracklets05,
     kSPDntracklets08,
+    kSPDntracklets12,
     kSPDntracklets16,
     kSPDntrackletsOuterEta,
     kSPDntrackletsEtaBin,
@@ -322,6 +329,10 @@ class AliReducedVarManager : public TObject {
     kSPDFiredChips = kCorrectedMultiplicity + kNMultiplicityEstimators * ( 1 + kNCorrections * kNReferenceMultiplicities * kNSmearingMethods), // SPD fired chips in first and second layer
     kITSnClusters=kSPDFiredChips+2,        // number of ITS clusters in each layer
     kSPDnSingleClusters=kITSnClusters+6,   // number of clusters in SPD layer 1 not mached to tracklets from layer 2
+    kVZEROasymmetry,
+    kVZEROcorrected,
+    kVZEROoffness,
+    kTotalMultiplicity,
     kEventMixingId,     // Id of the event mixing category 
     // VZERO event plane related variables
     kVZEROAemptyChannels,  // Number of empty VZERO channels in A side          
@@ -410,6 +421,7 @@ class AliReducedVarManager : public TObject {
     kMultEstimatorPercentileRefMult08,
     kINT7Triggered,
     kHighMultV0Triggered,
+    kRunHasTRD,
     kNEventVars,                               // number of event variables  
     // Particle variables --------------------------------------
     // Common pair/track variables
@@ -441,7 +453,8 @@ class AliReducedVarManager : public TObject {
     kCosNPhi,   
     kSinNPhi = kCosNPhi+6,
     kPtSquared = kSinNPhi+6,
-    kOneOverSqrtPt,                   // one over square root of pT
+    kSqrtPt,                   // square root of pT
+    kOneOverSqrtPt,            // one over square root of pT
     kMass,
     kMassMC,
     kMassMCfromLegs,
@@ -481,6 +494,19 @@ class AliReducedVarManager : public TObject {
     kPairDcaZ,
     kPairDcaSqrt,                // square root of pair DCA
     kPairDcaXYSqrt,
+    kPtPairDcaXYSqrt,
+    kPtPairDcaZSqrt,
+    kPtPairDcaSqrt,
+    kDcaXYneg,
+    kDcaXYpos,
+    kDcaXYdiff,
+    kDcaZdiff,
+    kDcaZneg,
+    kDcaZpos,
+    kDcaneg,
+    kDcapos,
+    kPtneg,
+    kPtpos,
     kPairDcaZSqrt,
     kMassDcaPtCorr,             // invariant mass, corrected for DCA and pT effects
     kOpAngDcaPtCorr,            // opening angle, corrected for DCA and pT effects
@@ -505,6 +531,7 @@ class AliReducedVarManager : public TObject {
     kChi2TPCConstrainedVsGlobal,
     kMassUsedForTracking,
     kITSncls,
+    kITSfirstHit,
     kNclsSFracITS,
     kITSchi2,
     kITSnclsShared,
@@ -650,7 +677,10 @@ class AliReducedVarManager : public TObject {
   static void SetLHCDataInfo(TH1F* totalLumi, TH1F* totalInt0, TH1F* totalInt1, TH1I* fillNumber);
   static void SetGRPDataInfo(TH1I* dipolePolarity, TH1I* l3Polarity, TH1I* timeStart, TH1I* timeStop);
   static void SetRunNumbers( TString runNumbers );
+  static void SetPeriod( Int_t period );
+  static void HasTRD( Bool_t hasTRD );
   static void SetMultiplicityProfile( TH2* profile, Int_t estimator );
+  static void SetTrackletVsV0Profile( TH2* profile );
   static void SetVZEROCalibrationPath(const Char_t* path);
   static void SetCalibrateVZEROqVector(Bool_t option);
   static void SetRecenterVZEROqVector(Bool_t option);
@@ -658,6 +688,8 @@ class AliReducedVarManager : public TObject {
   
  private:
   static Int_t     fgCurrentRunNumber;               // current run number
+  static Int_t     fgCurrentPeriod;               // current period
+  static Bool_t    fgHasTRD;
   static Float_t fgBeamMomentum;                  // beam energy (needed when calculating polarization angles) 
   static AliReducedBaseEvent* fgEvent;            // pointer to the current event
   static AliReducedEventPlaneInfo* fgEventPlane;  // pointer to the current event plane
@@ -704,6 +736,7 @@ class AliReducedVarManager : public TObject {
   static TString fgVZEROCalibrationPath;       // path to the VZERO calibration histograms
   static TProfile2D* fgAvgVZEROChannelMult[64];       // average multiplicity in VZERO channels vs (vtxZ,centSPD)
   static TProfile2D* fgVZEROqVecRecentering[4];       // (vtxZ,centSPD) maps of the VZERO A and C recentering Qvector offsets
+  static TH2* fgTrackletsVsV0;
   static Bool_t fgOptionCalibrateVZEROqVec;
   static Bool_t fgOptionRecenterVZEROqVec;
   
