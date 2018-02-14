@@ -409,19 +409,19 @@ void AliDielectronSignalFunc::ProcessFit(TObjArray * const arrhist) {
 //______________________________________________
 void AliDielectronSignalFunc::ProcessCombinatorialPlusFit(TObjArray * const arrhist) {
   //
-  // First subtract the combinatorial background, then fit the remaining background plus signal
-  // Here we assume that the combined fit function is a sum of the signal and correlated background functions
-  //    and that the signal function is always the first term of this sum
-  //
+  // Describe the backgorund by a combinatorial background historgram, multiplied with a fit function
+  // e.g. 1 + a * exp( -m / m_0 )
+  // the fit function describes the correlated bg.
+
+  // Example usage in: PWGDQ/dielectron/macrosJPSI/multiplicity13TeV/example_hybrid.C
+
+
+
   
-  fHistDataPP = (TH1*)(arrhist->At(AliDielectron::kEv1PP))->Clone("histPP");  // ++    SE
   fHistDataPM = (TH1*)(arrhist->At(AliDielectron::kEv1PM))->Clone("histPM");  // +-    SE
-  fHistDataMM = (TH1*)(arrhist->At(AliDielectron::kEv1MM))->Clone("histMM");  // --    SE
   fHistCombinatorialBackground = (TH1*)(arrhist->At(AliDielectron::kEv1PMRot))->Clone("histCombinatorial");
   
   
-  if(fHistDataPP->GetDefaultSumw2()) fHistDataPP->Sumw2();
-  if(fHistDataMM->GetDefaultSumw2()) fHistDataMM->Sumw2();
   fHistDataPM->Sumw2(kFALSE);
   fHistDataPM->SetBinErrorOption(TH1::kPoisson);
   
@@ -429,17 +429,13 @@ void AliDielectronSignalFunc::ProcessCombinatorialPlusFit(TObjArray * const arrh
   
   
   if(fHistCombinatorialBackground->GetDefaultSumw2()) fHistCombinatorialBackground->Sumw2();
-  fHistDataPP->SetDirectory(0);
   fHistDataPM->SetDirectory(0);
-  fHistDataMM->SetDirectory(0);
   fHistCombinatorialBackground->SetDirectory(0);
   
 
   // rebin the histograms
   if (fRebin>1) {
-    fHistDataPP->Rebin(fRebin);
     fHistDataPM->Rebin(fRebin);
-    fHistDataMM->Rebin(fRebin);
     fHistCombinatorialBackground->Rebin(fRebin);
   }
   
