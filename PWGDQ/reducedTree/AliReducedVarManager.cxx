@@ -1306,6 +1306,19 @@ void AliReducedVarManager::FillTrackInfo(BASETRACK* p, Float_t* values) {
   if(fgUsedVars[kITSncls]) values[kITSncls] = pinfo->ITSncls();
   values[kITSsignal] = pinfo->ITSsignal();
   values[kITSchi2] = pinfo->ITSchi2();
+  
+  values[kITSfirstHit] = -1;
+  UChar_t itsHitMap = pinfo->ITSclusterMap();
+  for( int iLayer=0; iLayer < 6 ; ++iLayer ){
+    UChar_t mask = 1 << iLayer;
+    if( mask & itsHitMap ) {
+      values[kITSfirstHit] = iLayer;
+      break;
+    }
+      
+  }
+  
+  
 
   if(fgUsedVars[kITSnclsShared]) values[kITSnclsShared] = pinfo->ITSnSharedCls();
   values[kTPCncls] = pinfo->TPCncls();
@@ -2588,6 +2601,7 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kMassUsedForTracking] = "Mass used for tracking"; fgVariableUnits[kMassUsedForTracking] = "GeV/c^{2}";
   fgVariableNames[kITSncls]           = "No.ITS clusters";              fgVariableUnits[kITSncls] = "";
   fgVariableNames[kITSchi2]           = "ITS #chi^{2}";                 fgVariableUnits[kITSchi2] = "";
+  fgVariableNames[kITSfirstHit]       = "first ITS layer";                 fgVariableUnits[kITSfirstHit] = "";
   fgVariableNames[kITSnclsShared]     = "No.of shared ITS clusters";              fgVariableUnits[kITSnclsShared] = "";
   fgVariableNames[kNclsSFracITS]      = "Fraction of shared ITS clusters/ITS clusters";fgVariableUnits[kNclsSFracITS] = "";
   fgVariableNames[kITSlayerHit]       = "ITS layer";                    fgVariableUnits[kITSlayerHit] = "";

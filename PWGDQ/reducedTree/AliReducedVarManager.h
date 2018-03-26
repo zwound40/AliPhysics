@@ -320,6 +320,7 @@ class AliReducedVarManager : public TObject {
     kSPDFiredChips = kCorrectedMultiplicity + kNMultiplicityEstimators * ( 1 + kNCorrections * kNReferenceMultiplicities * kNSmearingMethods), // SPD fired chips in first and second layer
     kITSnClusters=kSPDFiredChips+2,        // number of ITS clusters in each layer
     kSPDnSingleClusters=kITSnClusters+6,   // number of clusters in SPD layer 1 not mached to tracklets from layer 2
+    kITSfirstHit,
     kEventMixingId,     // Id of the event mixing category 
     // VZERO event plane related variables
     kVZEROAemptyChannels,  // Number of empty VZERO channels in A side          
