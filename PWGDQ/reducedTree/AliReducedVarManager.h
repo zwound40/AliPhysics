@@ -430,6 +430,7 @@ class AliReducedVarManager : public TObject {
     kThetaMC,
     kThetaMCfromLegs,
     kEta,
+    kEtaAbs,
     kEtaMC,
     kEtaMCfromLegs,
     kPhi,     
@@ -496,7 +497,9 @@ class AliReducedVarManager : public TObject {
     kDcaZTPC,    
     kPin,       
     kDcaXY,     
-    kDcaZ,              
+    kDcaZ,       
+    kDcaXYAbs,     
+    kDcaZAbs,              
     kTrackLength,       // track length
     kChi2TPCConstrainedVsGlobal,
     kMassUsedForTracking,

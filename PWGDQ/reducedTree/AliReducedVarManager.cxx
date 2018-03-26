@@ -1191,6 +1191,7 @@ void AliReducedVarManager::FillTrackInfo(BASETRACK* p, Float_t* values) {
   if(fgUsedVars[kTheta])     values[kTheta]     = p->Theta();
   if(fgUsedVars[kPhi])       values[kPhi]       = p->Phi();
   if(fgUsedVars[kEta])       values[kEta]       = p->Eta();
+  if(fgUsedVars[kEtaAbs])    values[kEtaAbs]    = TMath::Abs( p->Eta() );
   for(Int_t ih=1; ih<=6; ++ih) {
      if(fgUsedVars[kCosNPhi+ih-1]) values[kCosNPhi+ih-1] = TMath::Cos(p->Phi()*ih);
      if(fgUsedVars[kSinNPhi+ih-1]) values[kSinNPhi+ih-1] = TMath::Sin(p->Phi()*ih);
@@ -1296,6 +1297,8 @@ void AliReducedVarManager::FillTrackInfo(BASETRACK* p, Float_t* values) {
   values[kPin]         = pinfo->Pin();
   values[kDcaXY]       = pinfo->DCAxy();
   values[kDcaZ]        = pinfo->DCAz();
+  values[kDcaXYAbs]    = TMath::Abs(pinfo->DCAxy());
+  values[kDcaZAbs]     = TMath::Abs(pinfo->DCAz());
   values[kDcaXYTPC]    = pinfo->DCAxyTPC();
   values[kDcaZTPC]     = pinfo->DCAzTPC();
   values[kCharge]      = pinfo->Charge();
@@ -1868,12 +1871,12 @@ void AliReducedVarManager::FillPairInfoME(BASETRACK* t1, BASETRACK* t2, Int_t ty
     values[kPt] = p.Pt();
     if(fgUsedVars[kPtSquared]) values[kPtSquared] = values[kPt]*values[kPt];
   }
-  if(fgUsedVars[kP])      values[kP]      = p.P();
-  if(fgUsedVars[kEta])    values[kEta]    = p.Eta();
-  if(fgUsedVars[kRap])    values[kRap]    = p.Rapidity();
-  if(fgUsedVars[kRapAbs]) values[kRapAbs] = TMath::Abs(p.Rapidity());
-  if(fgUsedVars[kPhi])    values[kPhi]    = p.Phi();
-  if(fgUsedVars[kTheta])  values[kTheta]  = p.Theta();
+  if(fgUsedVars[kP]) values[kP] = p.P();
+  if(fgUsedVars[kEta]) values[kEta] = p.Eta();
+  if(fgUsedVars[kEtaAbs]) values[kEtaAbs] = TMath::Abs( p.Eta() );
+  if(fgUsedVars[kRap]) values[kRap] = p.Rapidity();
+  if(fgUsedVars[kPhi]) values[kPhi] = p.Phi();
+  if(fgUsedVars[kTheta]) values[kTheta] = p.Theta();
 
   if((fgUsedVars[kPairEff] || fgUsedVars[kOneOverPairEff] || fgUsedVars[kOneOverPairEffSq]) && fgPairEffMap) {
     Int_t binX = fgPairEffMap->GetXaxis()->FindBin(values[fgEffMapVarDependencyX]); //make sure the values[XVar] are filled for EM
@@ -2513,6 +2516,7 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kThetaMC] = "#theta^{MC}";  fgVariableUnits[kThetaMC] = "rad.";
   fgVariableNames[kThetaMCfromLegs] = "#theta^{MC-legs}";  fgVariableUnits[kThetaMCfromLegs] = "rad.";
   fgVariableNames[kEta]   = "#eta";    fgVariableUnits[kEta]   = "";
+  fgVariableNames[kEtaAbs]   = "|#eta|";    fgVariableUnits[kEta]   = "";
   fgVariableNames[kEtaMC]   = "#eta^{MC}";    fgVariableUnits[kEtaMC]   = "";
   fgVariableNames[kEtaMCfromLegs]   = "#eta^{MC-legs}";    fgVariableUnits[kEtaMCfromLegs]   = "";
   fgVariableNames[kPhi]   = "#varphi"; fgVariableUnits[kPhi]   = "rad.";
@@ -2569,6 +2573,8 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kPin]               = "p_{IN}";                       fgVariableUnits[kPin] = "GeV/c";
   fgVariableNames[kDcaXY]             = "DCA_{xy}";                     fgVariableUnits[kDcaXY] = "cm.";  
   fgVariableNames[kDcaZ]              = "DCA_{z}";                      fgVariableUnits[kDcaZ] = "cm.";  
+  fgVariableNames[kDcaXYAbs]          = "|DCA_{xy}|";                     fgVariableUnits[kDcaXY] = "cm.";  
+  fgVariableNames[kDcaZAbs]           = "|DCA_{z}|";                      fgVariableUnits[kDcaZ] = "cm.";  
   fgVariableNames[kPairDca]           = "DCA_{pair}";                   fgVariableUnits[kPairDca] = "cm";
   fgVariableNames[kPairDcaXY]         = "DCA_{xy,pair}";                fgVariableUnits[kPairDcaXY] = "cm";
   fgVariableNames[kPairDcaZ]          = "DCA_{z,pair}";                 fgVariableUnits[kPairDcaZ] = "cm";
