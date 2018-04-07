@@ -1098,6 +1098,9 @@ void AliReducedVarManager::FillMCTruthInfo(TRACK* p, Float_t* values, TRACK* leg
    //
    //  Fill pure MC truth information
    //
+ 
+   
+   
    if(fgUsedVars[kPtMC]) values[kPtMC] = p->PtMC();
    if(fgUsedVars[kPMC]) values[kPMC] = p->PMC();
    values[kPxMC] = p->MCmom(0);
@@ -2388,6 +2391,10 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kINT7Triggered]       = "event was triggered with INT7";       fgVariableUnits[kINT7Triggered]       = "";
   fgVariableNames[kTRDTriggeredType]    = "event was triggered by TRD ele trigger"; fgVariableUnits[kTRDTriggeredType]       = "";
   fgVariableNames[kHighMultV0Triggered] = "event was triggered with HighMultV0"; fgVariableUnits[kHighMultV0Triggered] = "";
+  
+  
+  fgVariableNames[kNMCtruthJpsi]       = "Number of MC Jpsi";       fgVariableUnits[kNMCtruthJpsi]       = "";
+  fgVariableNames[kNMCtruthJpsiLegs]   = "Number of MC Jpsi passing leg cuts";       fgVariableUnits[kNMCtruthJpsiLegs]       = "";
 
   TString vzeroSideNames[3] = {"A","C","AC"};
   for(Int_t iHarmonic=0;iHarmonic<6;++iHarmonic) {
