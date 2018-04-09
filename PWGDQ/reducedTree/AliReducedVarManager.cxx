@@ -347,7 +347,7 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
   values[kVtxY]                       = baseEvent->Vertex(1);
   values[kVtxZ]                      = baseEvent->Vertex(2);
   values[kNVtxContributors]= baseEvent->VertexNContributors(); 
-  
+  values[kHasVtx] = !! values[kNVtxContributors]; 
   values[kCentVZERO]         = baseEvent->CentralityVZERO();
   values[kCentSPD]              = baseEvent->CentralitySPD();
   values[kCentTPC]              = baseEvent->CentralityTPC();
@@ -499,6 +499,9 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
   values[kVtxXspd]              = event->VertexSPD(0);
   values[kVtxYspd]              = event->VertexSPD(1);
   values[kVtxZspd]              = event->VertexSPD(2);
+  values[kVtxXmc]              = event->VertexMC(0);
+  values[kVtxYmc]              = event->VertexMC(1);
+  values[kVtxZmc]              = event->VertexMC(2);
   values[kNVtxSPDContributors]  = event->VertexSPDContributors();
   
   if(fgUsedVars[kDeltaVtxZ]) values[kDeltaVtxZ] = values[kVtxZ] - values[kVtxZtpc];
@@ -2117,6 +2120,7 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kNTRDtracks]           = "Number of TRD tracks";            fgVariableUnits[kNTRDtracks]           = "";
   fgVariableNames[kNTRDtracklets]        = "Number of TRD tracklets";         fgVariableUnits[kNTRDtracklets]        = "";
   fgVariableNames[kNVtxContributors]     = "Number of vtx. contributors";     fgVariableUnits[kNVtxContributors]     = "";
+  fgVariableNames[kHasVtx]               = "Event has reconstructed vtx.";    fgVariableUnits[kHasVtx]               = "";
   fgVariableNames[kNVtxTPCContributors]  = "Number of TPC vtx. contributors"; fgVariableUnits[kNVtxTPCContributors]  = "";
   fgVariableNames[kNVtxSPDContributors]  = "Number of SPD vtx. contributors"; fgVariableUnits[kNVtxSPDContributors]  = "";
   fgVariableNames[kVtxX]                 = "Vtx X";                           fgVariableUnits[kVtxX]                 = "cm";
@@ -2129,6 +2133,9 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kVtxXspd]              = "Vtx X SPD";                       fgVariableUnits[kVtxXspd]              = "cm";
   fgVariableNames[kVtxYspd]              = "Vtx Y SPD";                       fgVariableUnits[kVtxYspd]              = "cm";
   fgVariableNames[kVtxZspd]              = "Vtx Z SPD";                       fgVariableUnits[kVtxZspd]              = "cm";
+  fgVariableNames[kVtxXmc]              = "Vtx X MC";                       fgVariableUnits[kVtxXmc]              = "cm";
+  fgVariableNames[kVtxYmc]              = "Vtx Y MC";                       fgVariableUnits[kVtxYmc]              = "cm";
+  fgVariableNames[kVtxZmc]              = "Vtx Z MC";                       fgVariableUnits[kVtxZmc]              = "cm";
   fgVariableNames[kDeltaVtxZspd]            = "#Delta Z (global-SPD)";                        fgVariableUnits[kDeltaVtxZspd]            = "cm";
   for(Int_t iflag=0; iflag<kNTrackingStatus; ++iflag) {
     fgVariableNames[kNTracksPerTrackingStatus+iflag] = Form("Tracks with %s on", fgkTrackingStatusNames[iflag]); 
