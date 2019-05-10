@@ -605,7 +605,7 @@ THnF* AliHistogramManager::CreateHistogram( const Char_t* name, const Char_t* ti
 
 
 //__________________________________________________________________
-void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values) {
+void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values, UInt_t cutNumber) {
   //
   //  fill a class of histograms
   //
@@ -654,13 +654,16 @@ void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values
     if(!isTHn) {
       varX = ((TH1*)h)->GetXaxis()->GetUniqueID();
       if(fUsedVars[varX]) {
+        AdaptToCut(varX, cutNumber );
         switch(dimension) {
           case 1:
             if(isProfile) {
               varY = ((TH1*)h)->GetYaxis()->GetUniqueID();
               if(!fUsedVars[varY]) break;
+              AdaptToCut(varY, cutNumber );
               if(varW>AliReducedVarManager::kNothing) { 
                 if(!fUsedVars[varW]) break;
+                AdaptToCut(varW, cutNumber );
                 ((TProfile*)h)->Fill(values[varX],values[varY],values[varW]);
               }
               else 
@@ -669,6 +672,7 @@ void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values
             else {
               if(varW>AliReducedVarManager::kNothing) {
                 if(!fUsedVars[varW]) break;
+                AdaptToCut(varW, cutNumber );
                 ((TH1F*)h)->Fill(values[varX],values[varW]);
               }
               else
@@ -678,11 +682,14 @@ void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values
           case 2:
             varY = ((TH1*)h)->GetYaxis()->GetUniqueID();
             if(!fUsedVars[varY]) break;
+            AdaptToCut(varY, cutNumber );
             if(isProfile) {
               varZ = ((TH1*)h)->GetZaxis()->GetUniqueID();
               if(!fUsedVars[varZ]) break;
+              AdaptToCut(varZ, cutNumber );
               if(varW>AliReducedVarManager::kNothing) {
                 if(!fUsedVars[varW]) break;
+                AdaptToCut(varW, cutNumber );
                 ((TProfile2D*)h)->Fill(values[varX],values[varY],values[varZ],values[varW]);
               }
               else
@@ -691,6 +698,7 @@ void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values
             else {
               if(varW>AliReducedVarManager::kNothing) {
                 if(!fUsedVars[varW]) break;
+                AdaptToCut(varW, cutNumber );
                 ((TH2F*)h)->Fill(values[varX],values[varY], values[varW]);
               }
               else
@@ -700,12 +708,15 @@ void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values
           case 3:
             varY = ((TH1*)h)->GetYaxis()->GetUniqueID();
             if(!fUsedVars[varY]) break;
+            AdaptToCut(varY, cutNumber );
             varZ = ((TH1*)h)->GetZaxis()->GetUniqueID();
             if(!fUsedVars[varZ]) break;
+            AdaptToCut(varZ, cutNumber );
             if(isProfile) {
               if(!fUsedVars[varT]) break;
               if(varW>AliReducedVarManager::kNothing) {
                 if(!fUsedVars[varW]) break;
+                AdaptToCut(varW, cutNumber );
                 ((TProfile3D*)h)->Fill(values[varX],values[varY],values[varZ],values[varT],values[varW]);
               }
               else
@@ -714,6 +725,7 @@ void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values
             else {
               if(varW>AliReducedVarManager::kNothing) {
                 if(!fUsedVars[varW]) break;
+                AdaptToCut(varW, cutNumber );
                 ((TH3F*)h)->Fill(values[varX],values[varY],values[varZ],values[varW]);
               }
               else
@@ -732,8 +744,10 @@ void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values
       }
       if(allVarsGood) {
         if(varW>AliReducedVarManager::kNothing) {
-          if(fUsedVars[varW])
+          if(fUsedVars[varW]){
+            AdaptToCut(varW, cutNumber );
             ((THnF*)h)->Fill(fillValues,values[varW]);
+          }
         }
         else
           ((THnF*)h)->Fill(fillValues);
@@ -741,6 +755,12 @@ void AliHistogramManager::FillHistClass(const Char_t* className, Float_t* values
     }
   }
 }
+
+void AliHistogramManager::AdaptToCut( Int_t &var, UInt_t cutNumber   ){
+  if(cutNumber && ( var== AliReducedVarManager::kPairEff || var == AliReducedVarManager::kOneOverPairEff || var == AliReducedVarManager::kOneOverPairEffSq 
+    || var == AliReducedVarManager::kPairEventEff || var == AliReducedVarManager::kOneOverPairEventEff || var == AliReducedVarManager::kOneOverPairEventEffSq )   ) var+=cutNumber;
+}
+
 
 //__________________________________________________________________
 void AliHistogramManager::WriteOutput(TFile* save) {

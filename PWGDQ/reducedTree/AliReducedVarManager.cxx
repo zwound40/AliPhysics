@@ -6,6 +6,10 @@
   *********************************************************
 */
 
+
+
+
+
 #ifndef ALIREDUCEDVARMANAGER_H
 #include "AliReducedVarManager.h"
 #endif
@@ -139,9 +143,13 @@ TH2F* AliReducedVarManager::fgTPCelectronCentroidMap = 0x0;
 TH2F* AliReducedVarManager::fgTPCelectronWidthMap = 0x0;
 AliReducedVarManager::Variables AliReducedVarManager::fgVarDependencyX = kNothing;
 AliReducedVarManager::Variables AliReducedVarManager::fgVarDependencyY = kNothing;
-TH2F* AliReducedVarManager::fgPairEffMap = 0x0;
-AliReducedVarManager::Variables AliReducedVarManager::fgEffMapVarDependencyX = kNothing;
-AliReducedVarManager::Variables AliReducedVarManager::fgEffMapVarDependencyY = kNothing;
+std::vector<TH2*> AliReducedVarManager::fgPairEffMaps;
+std::vector<AliReducedVarManager::Variables> AliReducedVarManager::fgPairEffMapVarDependencyX;
+std::vector<AliReducedVarManager::Variables> AliReducedVarManager::fgPairEffMapVarDependencyY;
+TH1* AliReducedVarManager::fgTriggerEffMap[kNGenerators] = {0x0};
+AliReducedVarManager::Variables AliReducedVarManager::fgTriggerEffMapVarDependency = kNothing;
+TH1* AliReducedVarManager::fgVtxEffMap = 0x0;
+AliReducedVarManager::Variables AliReducedVarManager::fgVtxEffMapVarDependency = kNothing;
 TH1F* AliReducedVarManager::fgRunTotalLuminosity = 0x0;
 TH1F* AliReducedVarManager::fgRunTotalIntensity0 = 0x0;
 TH1F* AliReducedVarManager::fgRunTotalIntensity1 = 0x0;
@@ -151,16 +159,22 @@ TH1I* AliReducedVarManager::fgRunL3Polarity = 0x0;
 TH1I* AliReducedVarManager::fgRunTimeStart = 0x0;
 TH1I* AliReducedVarManager::fgRunTimeEnd = 0x0;
 std::vector<Int_t>  AliReducedVarManager::fgRunNumbers;
+std::map<Int_t, Int_t > AliReducedVarManager::fgRunGroups;
+std::vector<Int_t > AliReducedVarManager::fgPeriods;
 Int_t AliReducedVarManager::fgRunID = -1;
-TH1* AliReducedVarManager::fgAvgMultVsVtxGlobal      [kNMultiplicityEstimators] = {0x0};
-TH1* AliReducedVarManager::fgAvgMultVsVtxRunwise     [kNMultiplicityEstimators] = {0x0};
-TH1* AliReducedVarManager::fgAvgMultVsRun            [kNMultiplicityEstimators] = {0x0};
-TH2* AliReducedVarManager::fgAvgMultVsVtxAndRun      [kNMultiplicityEstimators] = {0x0};
+Int_t AliReducedVarManager::fgRunGroup = -1;
+Int_t AliReducedVarManager::fgPeriod = -1;
+TH1* AliReducedVarManager::fgAvgMultVsVtx       [kNMultiplicityEstimators] = {0x0};
+TH2* AliReducedVarManager::fgAvgMultVsVtx_groups[kNMultiplicityEstimators] = {0x0};
+TH1* AliReducedVarManager::fgAvgMultVsRun       [kNMultiplicityEstimators] = {0x0};
+TH1* AliReducedVarManager::fgAlpha              [kNMultiplicityEstimators][2][kNReferenceMultiplicities][kNSmearingMethods][kNGenerators] = {0x0};
+TH1* AliReducedVarManager::fgRate = 0x0;
 
-Double_t AliReducedVarManager::fgRefMultVsVtxGlobal  [kNMultiplicityEstimators] [kNReferenceMultiplicities] = {0.};
-Double_t AliReducedVarManager::fgRefMultVsVtxRunwise [kNMultiplicityEstimators] [kNReferenceMultiplicities] = {0.};
-Double_t AliReducedVarManager::fgRefMultVsRun        [kNMultiplicityEstimators] [kNReferenceMultiplicities] = {0.};
-Double_t AliReducedVarManager::fgRefMultVsVtxAndRun  [kNMultiplicityEstimators] [kNReferenceMultiplicities] = {0.};
+
+
+Double_t AliReducedVarManager::fgRefMultVsVtx  [kNMultiplicityEstimators] [kNReferenceMultiplicities] = {0.};
+Double_t AliReducedVarManager::fgRefMultVsVtx_groups  [kNMultiplicityEstimators] [kNReferenceMultiplicities] = {0.};
+Double_t AliReducedVarManager::fgRefMultVsRun  [kNMultiplicityEstimators] [kNReferenceMultiplicities] = {0.};
 
 TString AliReducedVarManager::fgVZEROCalibrationPath = "";
 TProfile2D* AliReducedVarManager::fgAvgVZEROChannelMult[64] = {0x0};
@@ -302,10 +316,61 @@ void AliReducedVarManager::SetVariableDependencies() {
      fgUsedVars[fgVarDependencyX] = kTRUE; 
      fgUsedVars[fgVarDependencyY] = kTRUE;
   }
-  if(fgUsedVars[kPairEff] || fgUsedVars[kOneOverPairEff] || fgUsedVars[kOneOverPairEffSq]){
-    fgUsedVars[fgEffMapVarDependencyX] = kTRUE;
-    fgUsedVars[fgEffMapVarDependencyY] = kTRUE;
+  
+  
+  for(UInt_t i= 0; i<fgPairEffMaps.size(); ++i){
+    for( Int_t iGenerator=0; iGenerator<kNGenerators; ++iGenerator){
+      if( fgUsedVars[kPairEventEff+i*kNGenerators + iGenerator]) fgUsedVars[kEventEff+ iGenerator] = kTRUE;
+      if( fgUsedVars[kOneOverPairEventEff+i*kNGenerators + iGenerator]) fgUsedVars[kOneOverEventEff+ iGenerator] = kTRUE;
+      if( fgUsedVars[kOneOverPairEventEffSq+i*kNGenerators + iGenerator]) fgUsedVars[kOneOverEventEffSq+ iGenerator] = kTRUE;
+    }
   }
+  
+  
+  if(fgUsedVars[kEventEff]){
+    fgUsedVars[kVtxEff] = kTRUE;
+    fgUsedVars[kTriggerEff] = kTRUE; 
+  }
+  if(fgUsedVars[kOneOverEventEff]){
+    fgUsedVars[kOneOverVtxEff] = kTRUE;
+    fgUsedVars[kOneOverTriggerEff] = kTRUE; 
+  }
+  if(fgUsedVars[kOneOverEventEffSq]){
+    fgUsedVars[kOneOverVtxEffSq] = kTRUE;
+    fgUsedVars[kOneOverTriggerEffSq] = kTRUE; 
+  }
+  
+
+
+  for( Int_t iGenerator=0; iGenerator<kNGenerators; ++iGenerator){
+      if(fgUsedVars[kEventEff+iGenerator]){
+    fgUsedVars[kVtxEff] = kTRUE;
+    fgUsedVars[kTriggerEff+iGenerator] = kTRUE; 
+  }
+  if(fgUsedVars[kOneOverEventEff+iGenerator]){
+    fgUsedVars[kOneOverVtxEff] = kTRUE;
+    fgUsedVars[kOneOverTriggerEff+iGenerator] = kTRUE; 
+  }
+  if(fgUsedVars[kOneOverEventEffSq+iGenerator]){
+    fgUsedVars[kOneOverVtxEffSq] = kTRUE;
+    fgUsedVars[kOneOverTriggerEffSq+iGenerator] = kTRUE; 
+  }
+    
+    
+    
+    
+    if(fgUsedVars[kTriggerEff+iGenerator] || fgUsedVars[kOneOverTriggerEff+iGenerator] || fgUsedVars[kOneOverTriggerEffSq+iGenerator] ){
+      fgUsedVars[fgTriggerEffMapVarDependency] = kTRUE;
+    }
+  }
+  
+  
+  if(fgUsedVars[kVtxEff] || fgUsedVars[kOneOverVtxEff] || fgUsedVars[kOneOverVtxEffSq] ){
+    fgUsedVars[fgVtxEffMapVarDependency] = kTRUE;
+  }
+  
+  
+  
   if(fgUsedVars[kNTracksITSoutVsSPDtracklets] || fgUsedVars[kNTracksTPCoutVsSPDtracklets] ||
      fgUsedVars[kNTracksTOFoutVsSPDtracklets] || fgUsedVars[kNTracksTRDoutVsSPDtracklets])
      fgUsedVars[kSPDntracklets] = kTRUE;
@@ -347,7 +412,7 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
   values[kVtxY]                       = baseEvent->Vertex(1);
   values[kVtxZ]                      = baseEvent->Vertex(2);
   values[kNVtxContributors]= baseEvent->VertexNContributors(); 
-  values[kHasVtx] = !! values[kNVtxContributors]; 
+  values[kHasVtx] =  values[kNVtxContributors] ? 1. : 0.; 
   values[kCentVZERO]         = baseEvent->CentralityVZERO();
   values[kCentSPD]              = baseEvent->CentralitySPD();
   values[kCentTPC]              = baseEvent->CentralityTPC();
@@ -414,50 +479,83 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
 
     if(fgUsedVars[kRunID] && fgRunNumbers.size() && fgRunID < 0  ){
       for( fgRunID = 0; fgRunNumbers[ fgRunID ] != fgCurrentRunNumber && fgRunID< (Int_t) fgRunNumbers.size() ; ++fgRunID );
+      if( fgRunID == fgRunNumbers.size()  ) cout << "RUN NUMBER NOT FOUND" << endl;
     }
+    if( fgUsedVars[kRunGroup] && fgRunGroups.size()  && fgRunGroup < 0 ){
+      for( auto runGroup : fgRunGroups ){
+        if( runGroup.first <= fgCurrentRunNumber ) fgRunGroup = runGroup.second;
+        else if( runGroup.first > fgCurrentRunNumber ) break;
+      }
+      if( fgRunGroup < 0  )  cout << "RUN GROUP NOT FOUND" << endl;
+    }
+    if( fgUsedVars[kPeriod] && fgPeriods.size()  && fgPeriod < 0 ){
+      for( int iPeriod = 0; iPeriod< fgPeriods.size(); ++iPeriod ){
+        if( fgPeriods.at(iPeriod) <= fgCurrentRunNumber ) fgPeriod = iPeriod;
+        else if( fgPeriods.at(iPeriod) > fgCurrentRunNumber ) break;
+      }
+      if( fgPeriod < 0  )  cout << "PERIOD NOT FOUND" << endl;
+    }
+
+
+
     for( int iEstimator =0 ; iEstimator < kNMultiplicityEstimators ; ++iEstimator ){
-      if( fgAvgMultVsVtxAndRun[iEstimator] ){
-        Bool_t fillGlobal = !fgAvgMultVsVtxGlobal[iEstimator];
-        fgAvgMultVsVtxRunwise  [iEstimator] = fgAvgMultVsVtxAndRun[iEstimator]->ProjectionY( Form("AvgMultVsVtxRunwise%d",iEstimator ), fgRunID, fgRunID );
-        if( fillGlobal ){
-          fgAvgMultVsVtxGlobal [iEstimator] = fgAvgMultVsVtxAndRun[iEstimator]->ProjectionY( Form("AvgMultVsVtxGlobal%d", iEstimator) );
-          fgAvgMultVsVtxGlobal [iEstimator] -> Scale(1. / fgAvgMultVsVtxAndRun[iEstimator]->GetXaxis()->GetNbins());
-          fgAvgMultVsRun       [iEstimator] = fgAvgMultVsVtxAndRun[iEstimator]->ProjectionX( Form("AvgMultVsRun%d", iEstimator)  );
-          fgAvgMultVsRun       [iEstimator] -> Scale(1. / fgAvgMultVsVtxAndRun[iEstimator]->GetYaxis()->GetNbins());
-        }
+      int estimator = iEstimator + kMultiplicity;
+      if( fgAvgMultVsRun[iEstimator] || fgAvgMultVsVtx[iEstimator] ){
         for( int iReference = 0; iReference < kNReferenceMultiplicities; ++ iReference  ){
-          Double_t refVsVtx, refVsVtxGlobal, refVsRun, refVsVtxAndRun;
           switch ( iReference ){
             case kMaximumMultiplicity :
-              refVsVtx = fgAvgMultVsVtxRunwise[iEstimator]->GetMaximum();
-              if( fillGlobal ){
-                refVsVtxGlobal = fgAvgMultVsVtxGlobal[iEstimator]->GetMaximum();
-                refVsRun       = fgAvgMultVsRun[iEstimator]->GetMaximum();
-                refVsVtxAndRun = fgAvgMultVsVtxAndRun[iEstimator]->GetMaximum();
-              }
+                fgRefMultVsRun [iEstimator][iReference]        = fgAvgMultVsRun[iEstimator] ? fgAvgMultVsRun[iEstimator]->GetMaximum() : 0.;
+                fgRefMultVsVtx [iEstimator][iReference]        = fgAvgMultVsVtx[iEstimator] ? fgAvgMultVsVtx[iEstimator]->GetMaximum() : 0.;
+                fgRefMultVsVtx_groups [iEstimator][iReference] = fgAvgMultVsVtx_groups[iEstimator] ? fgAvgMultVsVtx_groups[iEstimator]->GetMaximum() : 0.;
               break;
             case kMinimumMultiplicity :
-              refVsVtx = fgAvgMultVsVtxRunwise[iEstimator]->GetMinimum();
-              if( fillGlobal ){
-                refVsVtxGlobal = fgAvgMultVsVtxGlobal[iEstimator]->GetMinimum();
-                refVsRun       = fgAvgMultVsRun[iEstimator]->GetMinimum();
-                refVsVtxAndRun = fgAvgMultVsVtxAndRun[iEstimator]->GetMinimum();
-              }
+                fgRefMultVsRun [iEstimator][iReference]        = fgAvgMultVsRun[iEstimator] ? fgAvgMultVsRun[iEstimator]->GetMinimum() : 0.;
+                fgRefMultVsVtx [iEstimator][iReference]        = fgAvgMultVsVtx[iEstimator] ? fgAvgMultVsVtx[iEstimator]->GetMinimum() : 0.;
+                fgRefMultVsVtx_groups [iEstimator][iReference] = fgAvgMultVsVtx_groups[iEstimator] ? fgAvgMultVsVtx_groups[iEstimator]->GetMinimum() : 0.;
               break;
             case kMeanMultiplicity :
-              refVsVtx = 0.5 * ( fgAvgMultVsVtxRunwise[iEstimator]->GetMaximum() +  fgAvgMultVsVtxRunwise[iEstimator]->GetMinimum() );
-              if( fillGlobal ){
-                refVsVtxGlobal = 0.5 * ( fgAvgMultVsVtxGlobal[iEstimator]->GetMaximum() + fgAvgMultVsVtxGlobal[iEstimator]->GetMinimum() ) ;
-                refVsRun       = 0.5 * ( fgAvgMultVsRun[iEstimator]->GetMaximum() + fgAvgMultVsRun[iEstimator]->GetMinimum() );
-                refVsVtxAndRun = 0.5 * ( fgAvgMultVsVtxAndRun[iEstimator]->GetMaximum() + fgAvgMultVsVtxAndRun[iEstimator]->GetMinimum() );
-              }
+                fgRefMultVsRun [iEstimator][iReference]        = fgAvgMultVsRun[iEstimator] ? 0.5 * ( fgAvgMultVsRun[iEstimator]->GetMaximum() + fgAvgMultVsRun[iEstimator]->GetMinimum() ): 0.;
+                fgRefMultVsVtx [iEstimator][iReference]        = fgAvgMultVsVtx[iEstimator] ? 0.5 * ( fgAvgMultVsVtx[iEstimator]->GetMaximum() + fgAvgMultVsVtx[iEstimator]->GetMinimum() ): 0.;
+                fgRefMultVsVtx_groups [iEstimator][iReference] = fgAvgMultVsVtx_groups[iEstimator] ? 0.5 * ( fgAvgMultVsVtx_groups[iEstimator]->GetMaximum() + fgAvgMultVsVtx_groups[iEstimator]->GetMinimum() ): 0.;
               break;
-          }
-          fgRefMultVsVtxRunwise  [iEstimator][iReference] = refVsVtx;
-          if(fillGlobal){
-            fgRefMultVsVtxGlobal [iEstimator][iReference] = refVsVtxGlobal;
-            fgRefMultVsRun       [iEstimator][iReference] = refVsRun;
-            fgRefMultVsVtxAndRun [iEstimator][iReference] = refVsVtxAndRun;
+            case kPYTHIAmultiplicity :
+                if(estimator == kVZEROATotalMult ) {
+                  fgRefMultVsRun [iEstimator][iReference] = 43.37;
+                  fgRefMultVsVtx [iEstimator][iReference] = 43.37;
+                }
+                else if(estimator == kVZEROCTotalMult ) {
+                  fgRefMultVsRun [iEstimator][iReference] = 60.1;
+                  fgRefMultVsVtx [iEstimator][iReference] = 60.1;
+                }
+                else if(estimator == kVZEROTotalMult ) {
+                  fgRefMultVsRun [iEstimator][iReference] = 103.5;
+                  fgRefMultVsVtx [iEstimator][iReference] = 103.5;
+                }
+                else  {
+                  fgRefMultVsRun [iEstimator][iReference] = 100.;
+                  fgRefMultVsVtx [iEstimator][iReference] = 100.;
+                }
+              
+              break;
+            case kEPOSmultiplicity :
+                if(estimator == kVZEROATotalMult ) {
+                  fgRefMultVsRun [iEstimator][iReference] = 45.24;
+                  fgRefMultVsVtx [iEstimator][iReference] = 45.24;
+                }
+                else if(estimator == kVZEROCTotalMult ) {
+                  fgRefMultVsRun [iEstimator][iReference] = 61.42;
+                  fgRefMultVsVtx [iEstimator][iReference] = 61.42;
+                }
+                else if(estimator == kVZEROTotalMult ) {
+                  fgRefMultVsRun [iEstimator][iReference] = 106.8;
+                  fgRefMultVsVtx [iEstimator][iReference] = 106.8;
+                }
+                else  {
+                  fgRefMultVsRun [iEstimator][iReference] = 100.;
+                  fgRefMultVsVtx [iEstimator][iReference] = 100.;
+                }
+              
+              break;
           }
         }
       }
@@ -466,6 +564,12 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
 
   values[kRunNo] = fgCurrentRunNumber;
   values[kRunID] = fgRunID;
+  values[kRunGroup] = fgRunGroup;
+  values[kPeriod] = fgPeriod;
+  if(fgRate)  values[kRate]  = fgRate->GetBinContent(fgRate->GetXaxis()->FindBin( Form("%d", fgCurrentRunNumber) )  );
+  
+  
+  
   
   values[kEventNumberInFile]    = event->EventNumberInFile();
   values[kBC]                   = event->BC();
@@ -479,10 +583,19 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
   values[kINT7Triggered]        = event->TriggerMask() & kINT7 ?1:0;
   values[kTRDTriggeredType]     = event->TRDfired();
   values[kHighMultV0Triggered]  = event->TriggerMask() & kHighMultV0 ?1:0;
+  values[kHighMultSPDTriggered] = event->TriggerMask() & kHighMultSPD ?1:0;
+  values[kINT7orHM]             = values[kINT7Triggered] || values[kHighMultV0Triggered] || values[kHighMultSPDTriggered];
+  values[kWhichTrigger]         = -1;
+  if ( values[kINT7Triggered]  ) values[kWhichTrigger] = 0;
+  else if ( values[kHighMultV0Triggered]  ) values[kWhichTrigger] = 1;
+  else if ( values[kHighMultSPDTriggered]  ) values[kWhichTrigger] = 2;
   values[kIsPhysicsSelection]   = (event->IsPhysicsSelection() ? 1.0 : 0.0);
   values[kIsSPDPileup]          = event->IsSPDPileup();
   values[kIsSPDPileup5]         = event->EventTag(11);
   values[kIsPileupMV]           = event->EventTag(1);
+  values[kIsPileupMVnoBC]           = event->EventTag(2);
+  values[kIsPileupMV10]           = event->EventTag(3);
+  values[kIsPileupMV05]           = event->EventTag(4);
   values[kIsSPDPileupMultBins]  = event->IsSPDPileupMultBins();
   values[kNSPDpileups]          = event->NpileupSPD();
   values[kNTrackPileups]        = event->NpileupTracks();
@@ -502,6 +615,15 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
   values[kVtxXmc]              = event->VertexMC(0);
   values[kVtxYmc]              = event->VertexMC(1);
   values[kVtxZmc]              = event->VertexMC(2);
+  values[kNch16] = event->Nch16();
+  values[kNch10] = event->Nch10();
+  values[kNch16JpsiExcl] = event->Nch16(kTRUE);
+  values[kNch10JpsiExcl] = event->Nch10(kTRUE);
+  values[kNchV0A] = event->NchV0A();
+  values[kNchV0C] = event->NchV0C();
+  values[kNchV0] = event->NchV0A() + event->NchV0C();
+  values[kNchV0or] = TMath::Min( event->NchV0A(), event->NchV0C() );
+  values[kNchMidOrV0] = event->Nch16() + event->NchV0A() + event->NchV0C();
   values[kNVtxSPDContributors]  = event->VertexSPDContributors();
   
   if(fgUsedVars[kDeltaVtxZ]) values[kDeltaVtxZ] = values[kVtxZ] - values[kVtxZtpc];
@@ -542,99 +664,129 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
 
   // Multiplicity estimators
 
-  values[ kVZEROATotalMult ] = event->MultVZEROA();
+  values[ kVZEROATotalMult ] =  event->MultVZEROA();
   values[ kVZEROCTotalMult ] = event->MultVZEROC();
   values[ kVZEROTotalMult  ]  = event->MultVZERO();
   
+  
+  
+  
   values[ kVZEROACTotalMult ] = event->MultVZEROA() + event->MultVZEROC();
+  values[ kV0or ] = TMath::Min( event->MultVZEROA(), event->MultVZEROC() );
 
   values[ kSPDntracklets ]   = event->SPDntracklets();
+  values[ kSPDntracklets05 ] = 0.;
   values[ kSPDntracklets08 ] = 0.;
   values[ kSPDntracklets16 ] = 0.;
   values[ kSPDntrackletsOuterEta ] = 0.;
   values[ kSPDnTracklets10EtaVtxCorr ] = 0.;
   
   
+  values[kINELgt0] = values[kSPDntracklets] > 0;
   
+  values[kVtxZlt10] =  TMath::Abs(values[kVtxZmc] ) < 10;
+  
+  values[kAllEventCuts] = values[kINT7Triggered] &&  values[kINELgt0] && values[kHasVtx]  && TMath::Abs(values[kVtxZ] ) < 10 ;
+  
+  values[kTriggeredVtxINELgt0] = values[kINT7Triggered] &&  values[kINELgt0] && values[kHasVtx] ;
   
   for(Int_t ieta=0;ieta<32;++ieta) {
     values[ kSPDntrackletsEtaBin+ieta ] = event->SPDntracklets(ieta);
+    values[ kSPDntracklets16 ] += event->SPDntracklets(ieta);
+    if( ieta > 10 && ieta < 21 ) values[ kSPDntracklets05 ] += event->SPDntracklets(ieta);
     if( ieta > 7 && ieta < 24 ) values[ kSPDntracklets08 ] += event->SPDntracklets(ieta);
-    if( ieta < 8 || ieta > 23 ) values[ kSPDntrackletsOuterEta ] += event->SPDntracklets(ieta);
+    if( ieta < 6 || ieta > 25 ) values[ kSPDntrackletsOuterEta ] += event->SPDntracklets(ieta);
   }
 
   for( Int_t iEstimator = 0; iEstimator < kNMultiplicityEstimators; ++iEstimator){
     Int_t estimator = kMultiplicity + iEstimator;
-    if( fgAvgMultVsVtxAndRun[iEstimator] ){
-      Int_t vtxBin = fgAvgMultVsVtxAndRun[iEstimator]->GetYaxis()->FindBin( values[kVtxZ] );
-      Int_t runBin = fgAvgMultVsVtxAndRun[iEstimator]->GetXaxis()->FindBin( values[kRunID] );
+    if( fgAvgMultVsVtx[iEstimator] || fgAvgMultVsRun[iEstimator] ){
+      
+//       Int_t vtxVar = kVtxZmc ? kVtxZmc : kVtxZ;
+      Int_t vtxVar = kVtxZ;
+      Int_t vtxBin = fgAvgMultVsVtx[iEstimator] ? fgAvgMultVsVtx[iEstimator]->GetXaxis()->FindBin( values[vtxVar] ) : -1;
+      Int_t vtxBin_groups = fgAvgMultVsVtx_groups[iEstimator] ? fgAvgMultVsVtx_groups[iEstimator]->GetYaxis()->FindBin( values[vtxVar] ) : -1;
+      Int_t runBin = fgAvgMultVsRun[iEstimator] ? fgAvgMultVsRun[iEstimator]->GetXaxis()->FindBin( values[kRunID] ) : -1;
       Double_t multRaw = values[ estimator ];
       for( Int_t iCorrection = 0; iCorrection < kNCorrections; ++iCorrection  ){
+        bool correctVtx        = fgAvgMultVsVtx[iEstimator] && ( iCorrection == kVertexCorr || iCorrection == kVertexAlphaCorr );
+        bool correctVtx_groups = fgAvgMultVsVtx_groups[iEstimator] && ( iCorrection == kVertexCorr_groups || iCorrection == kVertexAlphaCorr_groups );
+        bool correctRun        = fgAvgMultVsRun[iEstimator] && ( iCorrection == kRunCorr || iCorrection == kRunAlphaCorr );
+        bool correctAlpha      = iCorrection == kVertexAlphaCorr || iCorrection == kVertexAlphaCorr_groups || iCorrection == kRunAlphaCorr;
+
         for(Int_t iReference = 0 ; iReference <  kNReferenceMultiplicities; ++iReference ){
-          Int_t indexNotSmeared = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kNoSmearing );
-          Int_t indexSmeared    = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kPoissonSmearing );
-          Double_t multCorr        = multRaw;
-          Double_t multCorrSmeared = multRaw;
-    // apply vertex and gain loss correction simultaneously
-          if( iCorrection == kVertexCorrection2D  ){
-            Double_t localAvg = fgAvgMultVsVtxAndRun[iEstimator]->GetBinContent( runBin, vtxBin );
-            Double_t refMult  = fgRefMultVsVtxAndRun[iEstimator][iReference];
-            multCorr *=  localAvg ?  refMult / localAvg : 1.;
-            Double_t deltaM =  localAvg ?  multRaw * ( refMult/localAvg - 1) : 0.;
-            multCorrSmeared += (deltaM>0 ? 1. : -1.) * gRandom->Poisson(TMath::Abs(deltaM));
+    
+          Double_t multCorr          = multRaw - 0.5 + gRandom->Rndm();
+          Double_t multCorrSmeared   = multRaw;
+          Double_t localAvg = 0 ;
+          Double_t refMult = 0; 
+          if( correctVtx  ){
+            localAvg = fgAvgMultVsVtx[iEstimator]->GetBinContent( vtxBin );
+            refMult  = fgRefMultVsVtx[iEstimator][iReference];
+          }
+          else if( correctVtx_groups  ){
+            int group = values[kRunGroup];
+            TH1* prof = fgAvgMultVsVtx_groups[iEstimator]->ProjectionY( Form("%d", group), group+1, group+1    );
+
+            localAvg = prof->GetBinContent( vtxBin_groups );
+            refMult  = fgRefMultVsVtx_groups[iEstimator][iReference];
+          }
+          else if(correctRun){
+            localAvg = fgAvgMultVsRun[iEstimator]->GetBinContent( runBin );
+            refMult  = fgRefMultVsRun[iEstimator][iReference];
+          }
+          multCorr *= localAvg ? refMult/ localAvg : 1.;
+          Double_t deltaM = multCorr - multRaw;
+          multCorrSmeared += (deltaM>0 ? 1. : -1.) * gRandom->Poisson(TMath::Abs(deltaM));
+          
+          
+          
+//            if(estimator == kVZEROTotalMult  && correctRun)  cout << "multRaw " << multRaw << ",   localAvg " << localAvg <<  ",   multCorr " << multCorr << endl;
+          if(!correctAlpha){
+            
+            
+            Int_t indexNotSmeared = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kNoSmearing );
+            Int_t indexSmeared    = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kPoissonSmearing );
+            
+            values[ indexNotSmeared ] = multCorr;
+            values[ indexSmeared ]    = multCorrSmeared;
+            fgUsedVars [indexNotSmeared] = kTRUE;
+            fgUsedVars [indexSmeared] = kTRUE;
           }
           else{
-    // first apply vertex correction
-            Double_t localAvgVsVtx , refMultVsVtx  ;
-            switch( iCorrection ){
-              case kVertexCorrectionGlobal:
-              case kVertexCorrectionGlobalGainLoss:
-                localAvgVsVtx = fgAvgMultVsVtxGlobal[iEstimator]->GetBinContent( vtxBin );
-                refMultVsVtx  = fgRefMultVsVtxGlobal[iEstimator][iReference];
-                break;
-              case kVertexCorrectionRunwise:
-              case kVertexCorrectionRunwiseGainLoss:
-                localAvgVsVtx = fgAvgMultVsVtxRunwise[iEstimator]->GetBinContent( vtxBin );
-                refMultVsVtx  = fgRefMultVsVtxRunwise[iEstimator][iReference];
-                break;
-              default:
-                localAvgVsVtx = 0.;
-                refMultVsVtx  = 0.;
-                break;  
-            }
-            multCorr        *= localAvgVsVtx > 0. ? refMultVsVtx / localAvgVsVtx : 1.;
-            Double_t deltaM  = localAvgVsVtx > 0. ? multRaw  * ( refMultVsVtx/localAvgVsVtx - 1) : 0.;
-            multCorrSmeared += (deltaM>0 ? 1. : -1.) * gRandom->Poisson(TMath::Abs(deltaM));
-    // then apply gain loss correction
-            if( iCorrection == kVertexCorrectionGlobalGainLoss || 
-                iCorrection == kVertexCorrectionRunwiseGainLoss || 
-                iCorrection == kGainLossCorrection   ){
-              Double_t localAvgVsRun = fgAvgMultVsRun[iEstimator]->GetBinContent( runBin );
-              Double_t refMultVsRun  = fgRefMultVsRun[iEstimator][iReference];
-              multCorr        *= localAvgVsRun ? refMultVsRun / localAvgVsRun : 1.;
-              deltaM           = localAvgVsRun ? multCorrSmeared  * ( refMultVsRun/localAvgVsRun - 1) : 0;
-              multCorrSmeared += (deltaM>0 ? 1. : -1.) * gRandom->Poisson(TMath::Abs(deltaM));
+            Int_t jCorrection = correctRun;
+            for(Int_t iGenerator=0; iGenerator<kNGenerators; ++iGenerator){
+              if( fgAlpha[iEstimator][jCorrection][iReference][kNoSmearing][iGenerator] ){
+                Int_t multBin = fgAlpha[iEstimator][jCorrection][iReference][kNoSmearing][iGenerator]->GetXaxis()->FindBin(multCorr);
+                Double_t nch = fgAlpha[iEstimator][jCorrection][iReference][kNoSmearing][iGenerator]->GetBinContent( multBin  );
+                Int_t indexNotSmeared = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kNoSmearing, iGenerator );
+                values[ indexNotSmeared ] = nch;
+                fgUsedVars [indexNotSmeared] = kTRUE;
+              }
+              if( fgAlpha[iEstimator][jCorrection][iReference][kPoissonSmearing][iGenerator] ){
+                Int_t multBinSmeared = fgAlpha[iEstimator][jCorrection][iReference][kPoissonSmearing][iGenerator]->GetXaxis()->FindBin(multCorrSmeared);
+                Double_t nchSmeared = fgAlpha[iEstimator][jCorrection][iReference][kPoissonSmearing][iGenerator]->GetBinContent( multBinSmeared  );
+                
+                Int_t indexSmeared    = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kPoissonSmearing, iGenerator );
+                values[ indexSmeared ]    = nchSmeared;
+                fgUsedVars [indexSmeared] = kTRUE;
+              }
             }
           }
-          values[ indexNotSmeared ] = multCorr;
-          values[ indexSmeared ]    = multCorrSmeared;
-          fgUsedVars [indexNotSmeared] = kTRUE;
-          fgUsedVars [indexSmeared] = kTRUE;
         }
       }
     }
-    else if( ( estimator == kVZEROACTotalMult && fgAvgMultVsVtxAndRun[kVZEROATotalMult-kMultiplicity] && fgAvgMultVsVtxAndRun[kVZEROCTotalMult-kMultiplicity]  )  
-      || (estimator == kSPDnTracklets10EtaVtxCorr && fgAvgMultVsVtxAndRun[kSPDntrackletsEtaBin-kMultiplicity] ) ){
+     else if( estimator == kVZEROACTotalMult || estimator == kSPDnTracklets10EtaVtxCorr  || estimator == kV0or   ){
       for( Int_t iCorrection = 0; iCorrection < kNCorrections; ++iCorrection  ){
         for(Int_t iReference = 0 ; iReference <  kNReferenceMultiplicities; ++iReference ){
           Int_t indexNotSmeared = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kNoSmearing );
           Int_t indexSmeared    = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kPoissonSmearing );
           values[indexNotSmeared] = 0.;
           values[indexSmeared] = 0.;
-          if( estimator == kSPDnTracklets10EtaVtxCorr ){
+          if( estimator == kSPDnTracklets10EtaVtxCorr && fgAvgMultVsVtx[kSPDntrackletsEtaBin-kMultiplicity] ){
             for( Int_t ieta=6; ieta<26; ++ieta ) {
-              Int_t vtxBin = fgAvgMultVsVtxAndRun[kSPDntrackletsEtaBin+ieta-kMultiplicity]->GetYaxis()->FindBin( values[kVtxZ] );
-              if( fgAvgMultVsVtxGlobal[kSPDntrackletsEtaBin+ieta-kMultiplicity]->GetBinContent( vtxBin ) > .3 ){
+              Int_t vtxBin = fgAvgMultVsVtx[kSPDntrackletsEtaBin+ieta-kMultiplicity]->GetXaxis()->FindBin( values[kVtxZ] );
+              if( fgAvgMultVsVtx[kSPDntrackletsEtaBin+ieta-kMultiplicity]->GetBinContent( vtxBin ) > 0. ){
                 Int_t indexBinNotSmeared = GetCorrectedMultiplicity( kSPDntrackletsEtaBin+ieta, iCorrection, iReference, kNoSmearing );
                 Int_t indexBinSmeared    = GetCorrectedMultiplicity( kSPDntrackletsEtaBin+ieta, iCorrection, iReference, kPoissonSmearing );
                 if( fgUsedVars[indexBinNotSmeared]) values[ indexNotSmeared ] += values[ indexBinNotSmeared ];
@@ -642,7 +794,7 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
               }
             }
           }
-          else{
+          else if(estimator == kVZEROACTotalMult){
             Int_t indexAnotSmeared = GetCorrectedMultiplicity( kVZEROATotalMult, iCorrection, iReference, kNoSmearing );
             Int_t indexCnotSmeared = GetCorrectedMultiplicity( kVZEROCTotalMult, iCorrection, iReference, kNoSmearing );
 
@@ -652,11 +804,23 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
             values[ indexNotSmeared ] = values[ indexAnotSmeared ] + values[ indexCnotSmeared ];
             values[ indexSmeared ]    = values[ indexAsmeared ]    + values[ indexCsmeared ];
           }
+          else if(estimator == kV0or){
+            Int_t indexAnotSmeared = GetCorrectedMultiplicity( kVZEROATotalMult, iCorrection, iReference, kNoSmearing );
+            Int_t indexCnotSmeared = GetCorrectedMultiplicity( kVZEROCTotalMult, iCorrection, iReference, kNoSmearing );
+
+            Int_t indexAsmeared = GetCorrectedMultiplicity( kVZEROATotalMult, iCorrection, iReference, kPoissonSmearing );
+            Int_t indexCsmeared = GetCorrectedMultiplicity( kVZEROCTotalMult, iCorrection, iReference, kPoissonSmearing );
+
+            values[ indexNotSmeared ] = TMath::Min( values[ indexAnotSmeared ] , values[ indexCnotSmeared ] );
+            values[ indexSmeared ]    = TMath::Min( values[ indexAsmeared ]    , values[ indexCsmeared ] );
+          }
         }
       }
     }
+    
   }
-
+  
+  
   fgUsedVars[kNTracksITSoutVsSPDtracklets] = kTRUE;  
   fgUsedVars[kNTracksTPCoutVsSPDtracklets] = kTRUE;
   fgUsedVars[kNTracksTRDoutVsSPDtracklets] = kTRUE;
@@ -689,7 +853,21 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
      values[kNTracksTPCoutVsVZEROTotalMult] = values[kNTracksPerTrackingStatus+kTPCout] / values[kVZEROTotalMult];
   else
      fgUsedVars[kNTracksTPCoutVsVZEROTotalMult] = kFALSE;
-  
+ 
+
+  fgUsedVars[kNTracksITSsaVsTotal] = kTRUE;
+  if(values[kNTracksPerTrackingStatus+kITSrefit]>1.0e-5)
+    values[kNTracksITSsaVsTotal] = values[kNTracksPerTrackingStatus+kITSpureSA] / values[kNTracksPerTrackingStatus+kITSrefit];
+  else
+    fgUsedVars[kNTracksITSsaVsTotal] = kFALSE;
+
+  fgUsedVars[kNTracksTotalVsTPCout] = kTRUE;
+  if(values[kNTracksPerTrackingStatus+kTPCout]>1.0e-5)
+    values[kNTracksTotalVsTPCout] = values[kNTracksPerTrackingStatus+kITSrefit] / values[kNTracksPerTrackingStatus+kTPCout];
+  else
+    fgUsedVars[kNTracksTotalVsTPCout] = kFALSE;
+
+ 
   values[kVZEROAemptyChannels] = 0;
   values[kVZEROCemptyChannels] = 0;
   for(Int_t ich=0;ich<64;++ich) fgUsedVars[kVZEROChannelMult+ich] = kTRUE; 
@@ -938,7 +1116,51 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
   values[kMultEstimatorPercentileSPDTracklets] = event->MultEstimatorPercentileSPDTracklets();
   values[kMultEstimatorPercentileRefMult05]    = event->MultEstimatorPercentileRefMult05();
   values[kMultEstimatorPercentileRefMult08]    = event->MultEstimatorPercentileRefMult08();
-
+  
+  
+  
+  
+    //event efficiency variables
+  
+  if( (fgUsedVars[kVtxEff] || fgUsedVars[kOneOverVtxEff] || fgUsedVars[kOneOverVtxEffSq]) && fgVtxEffMap) {
+    Int_t binX = fgVtxEffMap->GetXaxis()->FindBin(values[fgVtxEffMapVarDependency]);
+    if(binX==0) binX = 1;
+    if(binX==fgVtxEffMap->GetXaxis()->GetNbins()+1) binX -= 1;
+    
+    Float_t vtxEff = fgVtxEffMap->GetBinContent(binX);
+    Float_t oneOverVtxEff = 1;
+    if (vtxEff > 1.0e-3) oneOverVtxEff = 1/vtxEff;
+    values[kVtxEff] = vtxEff;
+    values[kOneOverVtxEff] = oneOverVtxEff;
+    values[kOneOverVtxEffSq] = oneOverVtxEff*oneOverVtxEff;
+  }
+  
+  
+  
+  for(Int_t iGenerator=0; iGenerator<kNGenerators; ++iGenerator){
+    if((fgUsedVars[kTriggerEff+iGenerator] || fgUsedVars[kOneOverTriggerEff+iGenerator] || fgUsedVars[kOneOverTriggerEffSq+iGenerator]) && fgTriggerEffMap[iGenerator]) {
+      Int_t binX = fgTriggerEffMap[iGenerator]->GetXaxis()->FindBin(values[fgTriggerEffMapVarDependency]);
+      if(binX==0) binX = 1;
+      if(binX==fgTriggerEffMap[iGenerator]->GetXaxis()->GetNbins()+1) binX -= 1;
+      
+      Float_t triggerEff = fgTriggerEffMap[iGenerator]->GetBinContent(binX);
+      Float_t oneOverTriggerEff = 1;
+      if (triggerEff > 1.0e-3) oneOverTriggerEff = 1/triggerEff;
+      values[kTriggerEff+iGenerator] = triggerEff;
+      values[kOneOverTriggerEff+iGenerator] = oneOverTriggerEff;
+      values[kOneOverTriggerEffSq+iGenerator] = oneOverTriggerEff*oneOverTriggerEff;
+      
+      
+      if( (fgUsedVars[kVtxEff] || fgUsedVars[kOneOverVtxEff] || fgUsedVars[kOneOverVtxEffSq]) && fgVtxEffMap  ){
+        
+        values[kEventEff+iGenerator] = values[kTriggerEff+iGenerator] * values[kVtxEff];
+        values[kOneOverEventEff+iGenerator] = values[kOneOverTriggerEff+iGenerator] * values[kOneOverVtxEff];
+        values[kOneOverEventEffSq+iGenerator] = values[kOneOverTriggerEffSq+iGenerator] * values[kOneOverVtxEffSq];
+        
+      }
+      
+    }
+  }
 }
 
 //_________________________________________________________________
@@ -1202,21 +1424,36 @@ void AliReducedVarManager::FillTrackInfo(BASETRACK* p, Float_t* values) {
      if(fgUsedVars[kSinNPhi+ih-1]) values[kSinNPhi+ih-1] = TMath::Sin(p->Phi()*ih);
   }
 
-  //pair efficiency variables
-  if((fgUsedVars[kPairEff] || fgUsedVars[kOneOverPairEff] || fgUsedVars[kOneOverPairEffSq]) && fgPairEffMap) {
-    Int_t binX = fgPairEffMap->GetXaxis()->FindBin(values[fgEffMapVarDependencyX]);
-    if(binX==0) binX = 1;
-    if(binX==fgPairEffMap->GetXaxis()->GetNbins()+1) binX -= 1;
-    Int_t binY = fgPairEffMap->GetYaxis()->FindBin(values[fgEffMapVarDependencyY]);
-    if(binY==0) binY=1;
-    if(binY==fgPairEffMap->GetYaxis()->GetNbins()+1) binY -= 1;
-    Float_t pairEff = fgPairEffMap->GetBinContent(binX, binY);
-    Float_t oneOverPairEff = 1;
-    if (pairEff > 1.0e-6) oneOverPairEff = 1/pairEff;
-    values[kPairEff] = pairEff;
-    values[kOneOverPairEff] = oneOverPairEff;
-    values[kOneOverPairEffSq] = oneOverPairEff*oneOverPairEff;
-  }
+  
+//   cout << "size: " << fgPairEffMaps.size()<<endl;
+//   //pair efficiency variables
+//   for(UInt_t i= 0; i<fgPairEffMaps.size(); ++i){
+//     cout << "i: " << i<<endl;
+//     cout << "fgPairEffMaps.at(i) " << fgPairEffMaps.at(i) << endl;
+//     cout << "fgPairEffMapVarDependencyX.at(i) " << fgPairEffMapVarDependencyX.at(i) << endl;
+//     cout << "values[fgPairEffMapVarDependencyX.at(i)] " << values[fgPairEffMapVarDependencyX.at(i)] << endl;
+//       Int_t binX = fgPairEffMaps.at(i)->GetXaxis()->FindBin(values[fgPairEffMapVarDependencyX.at(i)]); //make sure the values[XVar] are filled for EM
+//       if(binX==0) binX = 1;
+//       if(binX==fgPairEffMaps.at(i)->GetXaxis()->GetNbins()+1) binX -= 1;
+//       Int_t binY = fgPairEffMaps.at(i)->GetYaxis()->FindBin(values[fgPairEffMapVarDependencyY.at(i)]); //make sure the values[YVar] are filled for EM
+//       if(binY==0) binY=1;
+//       if(binY==fgPairEffMaps.at(i)->GetYaxis()->GetNbins()+1) binY -= 1;
+//       Float_t pairEff = fgPairEffMaps.at(i)->GetBinContent(binX, binY);
+//       Float_t oneOverPairEff = 1;
+//       if (pairEff > 1.0e-6) oneOverPairEff = 1/pairEff;
+//       values[kPairEff+i] = pairEff;
+//       values[kOneOverPairEff+i] = oneOverPairEff;
+//       values[kOneOverPairEffSq+i] = oneOverPairEff*oneOverPairEff;
+//       
+//     values[kPairEventEff+i] = values[kPairEff+i] *  values[kEventEff];
+//     values[kOneOverPairEventEff+i] = values[kOneOverPairEff+i] * values[kOneOverEventEff];
+//     values[kOneOverPairEventEffSq+i] = values[kOneOverPairEffSq+i] * values[kOneOverEventEffSq];
+//   }
+  
+  
+  
+  
+  
 
   // Fill VZERO flow variables
   for(Int_t iVZEROside=0; iVZEROside<3; ++iVZEROside) {
@@ -1312,6 +1549,11 @@ void AliReducedVarManager::FillTrackInfo(BASETRACK* p, Float_t* values) {
 
   if(fgUsedVars[kITSnclsShared]) values[kITSnclsShared] = pinfo->ITSnSharedCls();
   values[kTPCncls] = pinfo->TPCncls();
+
+
+ if(fgUsedVars[kITS1stClsShared]) values[kITS1stClsShared]  = pinfo->ITSClusterIsShared(0);
+ if(fgUsedVars[kITSnot1stClsShared]) values[kITSnot1stClsShared]  = pinfo->ITSClusterIsShared(1) || pinfo->ITSClusterIsShared(2) || pinfo->ITSClusterIsShared(3) || pinfo->ITSClusterIsShared(4) || pinfo->ITSClusterIsShared(5)  ;
+
 
   if(fgUsedVars[kNclsSFracITS])
   values[kNclsSFracITS] = (pinfo-> ITSncls()>0 ? Float_t (pinfo->ITSnSharedCls())/Float_t(pinfo->ITSncls()) :0.0) ;
@@ -1612,10 +1854,11 @@ void AliReducedVarManager::FillPairInfo(BASETRACK* t1, BASETRACK* t2, Int_t type
      values[kPairLegTPCchi2] = ti1->TPCchi2();
      values[kPairLegTPCchi2+1] = ti2->TPCchi2();
   }
-  if((fgUsedVars[kPairLegITSchi2] || fgUsedVars[kPairLegITSchi2+1]) && (t1->IsA()==TRACK::Class()) && (t2->IsA()==TRACK::Class())) {
+  if((fgUsedVars[kPairLegITSchi2] || fgUsedVars[kPairLegITSchi2+1] || fgUsedVars[kPairLegITSchi2+2]) && (t1->IsA()==TRACK::Class()) && (t2->IsA()==TRACK::Class())) {
      TRACK* ti1=(TRACK*)t1; TRACK* ti2=(TRACK*)t2;
     values[kPairLegITSchi2] = ti1->ITSchi2();
     values[kPairLegITSchi2+1] = ti2->ITSchi2();
+    values[kPairLegITSchi2+2] =TMath::Max( ti1->ITSchi2(), ti2->ITSchi2() );
   }
   
   if((fgUsedVars[kPseudoProperDecayTime] || fgUsedVars[kPairLxy]) &&  
@@ -1631,7 +1874,22 @@ void AliReducedVarManager::FillPairInfo(BASETRACK* t1, BASETRACK* t2, Int_t type
         values[kPseudoProperDecayTime] = pairKF.GetPseudoProperDecayTime(primVtx, fgkPairMass[type], &errPseudoProperTime2);
      if(fgUsedVars[kPairLxy]) values[kPairLxy] =  ( (pairKF.X() - primVtx.X())*p.Px() + (pairKF.Y() - primVtx.Y())*p.Py() )/p.Pt(); // = values[kPseudoProperDecayTime]*(p.Pt()/PAIR::fgkPairMass[type]);
   }
-  
+  if( (fgUsedVars[kMassGamma] || fgUsedVars[kCanConstructGamma]  )  && t1->IsA()==TRACK::Class() && t2->IsA()==TRACK::Class() ){
+     TRACK* ti1=(TRACK*)t1; 
+     TRACK* ti2=(TRACK*)t2;
+     AliKFParticle pairGamma = BuildKFcandidate(ti1,m1,ti2,m2, true);
+     if( pairGamma.GetMass() > 0.    ){
+       values[kCanConstructGamma] = kTRUE;
+       values[kMassGamma] = pairGamma.GetMass();
+     }
+     else{
+       values[kCanConstructGamma] = kFALSE;
+       values[kMassGamma] = values[kMass];
+     }
+
+  } 
+
+ 
   // fill MC information
   if(p.PairType()==1) {
      TRACK* pinfo1 = 0x0;
@@ -1679,6 +1937,19 @@ void AliReducedVarManager::FillPairInfo(BASETRACK* t1, BASETRACK* t2, Int_t type
      }
      if(fgUsedVars[kRapMCAbs]) values[kRapMCAbs] = TMath::Abs(pMC.Rapidity());
   }
+  if( fgUsedVars[kPtProd]  ){
+     values[kPtProd] = t1->Pt() * t2->Pt();
+  }
+  if( fgUsedVars[kEtaDiff]  ){
+     values[kEtaDiff] = t1->Eta() - t2->Eta();
+  }
+  if( fgUsedVars[kPhiDiff]  ){
+     values[kPhiDiff] = t1->Phi() - t2->Phi();
+  }
+
+  if( fgUsedVars[kTrack1Pt] ) values[kTrack1Pt] = t1->Pt();
+  if( fgUsedVars[kTrack2Pt] ) values[kTrack2Pt] = t2->Pt();
+
 
    if( fgUsedVars[kPairPhiV] ){
     // implementation taken from AliDielectronPair.cxx
@@ -1824,6 +2095,41 @@ void AliReducedVarManager::FillPairInfo(BASETRACK* t1, BASETRACK* t2, Int_t type
       values[kMassDcaPtCorr] = values[kMass] - a - b * values[kPairDcaXYSqrt] - c * values[kPt] -  d * values[kPairDcaXYSqrt]  * values[kPt];
     }
   }
+  for(UInt_t i= 0; i<fgPairEffMaps.size(); ++i){
+    Int_t binX = fgPairEffMaps.at(i)->GetXaxis()->FindBin(values[fgPairEffMapVarDependencyX.at(i)]); //make sure the values[XVar] are filled for EM
+    if(binX==0) binX = 1;
+    if(binX==fgPairEffMaps.at(i)->GetXaxis()->GetNbins()+1) binX -= 1;
+    Int_t binY = fgPairEffMaps.at(i)->GetYaxis()->FindBin(values[fgPairEffMapVarDependencyY.at(i)]); //make sure the values[YVar] are filled for EM
+    if(binY==0) binY=1;
+    if(binY==fgPairEffMaps.at(i)->GetYaxis()->GetNbins()+1) binY -= 1;
+    Float_t pairEff = fgPairEffMaps.at(i)->GetBinContent(binX, binY);
+    Float_t oneOverPairEff = 1;
+    if (pairEff > 1.0e-6) oneOverPairEff = 1/pairEff;
+    values[kPairEff+i] = pairEff;
+    values[kOneOverPairEff+i] = oneOverPairEff;
+    values[kOneOverPairEffSq+i] = oneOverPairEff*oneOverPairEff;
+    
+    fgUsedVars[kPairEff+i]=true;
+    fgUsedVars[kOneOverPairEff+i]=true;
+    fgUsedVars[kOneOverPairEffSq+i]=true;
+    
+    
+    for(Int_t iGenerator=0; iGenerator<kNGenerators; ++iGenerator){
+      values[kPairEventEff+i*kNGenerators + iGenerator] = values[kPairEff+i] *  values[kEventEff+iGenerator];
+      values[kOneOverPairEventEff+i*kNGenerators +iGenerator] = values[kOneOverPairEff+i] * values[kOneOverEventEff+iGenerator];
+      values[kOneOverPairEventEffSq+kNGenerators +iGenerator] = values[kOneOverPairEffSq+i] * values[kOneOverEventEffSq+iGenerator];
+      
+      fgUsedVars[kPairEventEff+i*kNGenerators + iGenerator]=true;
+      fgUsedVars[kOneOverPairEventEff+i*kNGenerators +iGenerator]=true;
+      fgUsedVars[kOneOverPairEventEffSq+kNGenerators +iGenerator]=true;
+    }
+  }
+  
+  
+  
+  
+  
+  
 }
 
 
@@ -1836,6 +2142,8 @@ void AliReducedVarManager::FillPairInfoME(BASETRACK* t1, BASETRACK* t2, Int_t ty
   // type - Parameter encoding the resonance type 
   //        This is needed for making a mass assumption on the legs
   //
+
+
   PAIR p;
   p.PxPyPz(t1->Px()+t2->Px(), t1->Py()+t2->Py(), t1->Pz()+t2->Pz());
   p.CandidateId(type);
@@ -1881,20 +2189,47 @@ void AliReducedVarManager::FillPairInfoME(BASETRACK* t1, BASETRACK* t2, Int_t ty
   if(fgUsedVars[kPhi])    values[kPhi]    = p.Phi();
   if(fgUsedVars[kTheta])  values[kTheta]  = p.Theta();
 
-  if((fgUsedVars[kPairEff] || fgUsedVars[kOneOverPairEff] || fgUsedVars[kOneOverPairEffSq]) && fgPairEffMap) {
-    Int_t binX = fgPairEffMap->GetXaxis()->FindBin(values[fgEffMapVarDependencyX]); //make sure the values[XVar] are filled for EM
+  if( fgUsedVars[kPtProd]  ){
+     values[kPtProd] = t1->Pt() * t2->Pt();
+  }
+  if( fgUsedVars[kEtaDiff]  ){
+     values[kEtaDiff] = t1->Eta() - t2->Eta();
+  }
+  if( fgUsedVars[kPhiDiff]  ){
+     values[kPhiDiff] = t1->Phi() - t2->Phi();
+  }
+
+  
+  for(UInt_t i= 0; i<fgPairEffMaps.size(); ++i){
+    Int_t binX = fgPairEffMaps.at(i)->GetXaxis()->FindBin(values[fgPairEffMapVarDependencyX.at(i)]); //make sure the values[XVar] are filled for EM
     if(binX==0) binX = 1;
-    if(binX==fgPairEffMap->GetXaxis()->GetNbins()+1) binX -= 1;
-    Int_t binY = fgPairEffMap->GetYaxis()->FindBin(values[fgEffMapVarDependencyY]); //make sure the values[YVar] are filled for EM
+    if(binX==fgPairEffMaps.at(i)->GetXaxis()->GetNbins()+1) binX -= 1;
+    Int_t binY = fgPairEffMaps.at(i)->GetYaxis()->FindBin(values[fgPairEffMapVarDependencyY.at(i)]); //make sure the values[YVar] are filled for EM
     if(binY==0) binY=1;
-    if(binY==fgPairEffMap->GetYaxis()->GetNbins()+1) binY -= 1;
-    Float_t pairEff = fgPairEffMap->GetBinContent(binX, binY);
+    if(binY==fgPairEffMaps.at(i)->GetYaxis()->GetNbins()+1) binY -= 1;
+    Float_t pairEff = fgPairEffMaps.at(i)->GetBinContent(binX, binY);
     Float_t oneOverPairEff = 1;
     if (pairEff > 1.0e-6) oneOverPairEff = 1/pairEff;
-    values[kPairEff] = pairEff;
-    values[kOneOverPairEff] = oneOverPairEff;
-    values[kOneOverPairEffSq] = oneOverPairEff*oneOverPairEff;
+    values[kPairEff+i] = pairEff;
+    values[kOneOverPairEff+i] = oneOverPairEff;
+    values[kOneOverPairEffSq+i] = oneOverPairEff*oneOverPairEff;
+    
+    fgUsedVars[kPairEff+i]=true;
+    fgUsedVars[kOneOverPairEff+i]=true;
+    fgUsedVars[kOneOverPairEffSq+i]=true;
+    
+    
+    for(Int_t iGenerator=0; iGenerator<kNGenerators; ++iGenerator){
+      values[kPairEventEff+i*kNGenerators + iGenerator] = values[kPairEff+i] *  values[kEventEff+iGenerator];
+      values[kOneOverPairEventEff+i*kNGenerators + iGenerator] = values[kOneOverPairEff+i] * values[kOneOverEventEff+iGenerator];
+      values[kOneOverPairEventEffSq+i*kNGenerators + iGenerator] = values[kOneOverPairEffSq+i] * values[kOneOverEventEffSq+iGenerator];
+      
+      fgUsedVars[kPairEventEff+i*kNGenerators + iGenerator]=true;
+      fgUsedVars[kOneOverPairEventEff+i*kNGenerators +iGenerator]=true;
+      fgUsedVars[kOneOverPairEventEffSq+kNGenerators +iGenerator]=true;
+    }
   }
+
 }
 
 
@@ -1938,6 +2273,19 @@ void AliReducedVarManager::FillPairInfo(PAIR* t1, BASETRACK* t2, Int_t type, Flo
   values[kMassV0+1] = -1.0;
   values[kMassV0+2] = -1.0;
   values[kMassV0+3] = -1.0;
+  
+
+  
+  if( fgUsedVars[kPtProd]  ){
+     values[kPtProd] = t1->Pt() * t2->Pt();
+  }
+  if( fgUsedVars[kEtaDiff]  ){
+     values[kEtaDiff] = t1->Eta() - t2->Eta();
+  }
+  if( fgUsedVars[kPhiDiff]  ){
+     values[kPhiDiff] = t1->Phi() - t2->Phi();
+  }
+
   
   FillTrackInfo(&p, values);
 }
@@ -2090,6 +2438,9 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kL2TriggerInput2]       = "  ";               fgVariableUnits[kL2TriggerInput2]       = "";
   fgVariableNames[kRunNo]                = "Run number";                      fgVariableUnits[kRunNo]                = "";
   fgVariableNames[kRunID]                = "Run number";                      fgVariableUnits[kRunID]                = "";
+  fgVariableNames[kRunGroup]                = "Run group";                    fgVariableUnits[kRunGroup]                = "";
+  fgVariableNames[kPeriod]                = "Run period";                     fgVariableUnits[kPeriod]                = "";
+  fgVariableNames[kRate]                = "Interaction rate";                 fgVariableUnits[kRate]                = "Hz";
   fgVariableNames[kLHCFillNumber]        = "LHC fill number";                 fgVariableUnits[kLHCFillNumber]        = ""; 
   fgVariableNames[kBeamEnergy]           = "Beam energy";                     fgVariableUnits[kBeamEnergy]           = "GeV";
   fgVariableNames[kDetectorMask]         = "Detector mask";                   fgVariableUnits[kDetectorMask]         = "";
@@ -2139,6 +2490,15 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kVtxXmc]              = "Vtx X MC";                       fgVariableUnits[kVtxXmc]              = "cm";
   fgVariableNames[kVtxYmc]              = "Vtx Y MC";                       fgVariableUnits[kVtxYmc]              = "cm";
   fgVariableNames[kVtxZmc]              = "Vtx Z MC";                       fgVariableUnits[kVtxZmc]              = "cm";
+  fgVariableNames[kNch10]              = "N_{ch}(|#eta|<1.0)";                       fgVariableUnits[kNch10]              = "";
+  fgVariableNames[kNch16]              = "N_{ch}(|#eta|<1.6)";                       fgVariableUnits[kNch16]              = "";
+  fgVariableNames[kNch10JpsiExcl]              = "N_{ch}(|#eta|<1.0, excluding J/#psi daughters)";                       fgVariableUnits[kNch10JpsiExcl]              = "";
+  fgVariableNames[kNch16JpsiExcl]              = "N_{ch}(|#eta|<1.6, excluding J/#psi daughters)";                       fgVariableUnits[kNch16JpsiExcl]              = "";
+  fgVariableNames[kNchV0A]              = "N_{ch}(V0A)";                       fgVariableUnits[kNchV0A]              = "";
+  fgVariableNames[kNchV0C]              = "N_{ch}(V0C)";                       fgVariableUnits[kNchV0C]              = "";
+  fgVariableNames[kNchV0]              = "N_{ch}(V0)";                       fgVariableUnits[kNchV0]              = "";
+  fgVariableNames[kNchV0or]            = "min(N_{ch}(V0A,C))";                       fgVariableUnits[kNchV0or]              = "";
+  fgVariableNames[kNchMidOrV0]          = "N_{ch}(mid or V0) ";                       fgVariableUnits[kNchMidOrV0]              = "";
   fgVariableNames[kDeltaVtxZspd]            = "#Delta Z (global-SPD)";                        fgVariableUnits[kDeltaVtxZspd]            = "cm";
   for(Int_t iflag=0; iflag<kNTrackingStatus; ++iflag) {
     fgVariableNames[kNTracksPerTrackingStatus+iflag] = Form("Tracks with %s on", fgkTrackingStatusNames[iflag]); 
@@ -2200,6 +2560,7 @@ void AliReducedVarManager::SetDefaultVarNames() {
 
   TString multEstimators[kNMultiplicityEstimators] = {
     "SPDntracklets10",
+    "SPDntracklets05",
     "SPDntracklets08",
     "SPDntracklets16",
     "SPDntrackletsOuterEta",
@@ -2239,7 +2600,8 @@ void AliReducedVarManager::SetDefaultVarNames() {
     "VZEROTotalMult",
     "VZEROATotalMult",
     "VZEROCTotalMult",
-    "VZEROAplusCTotalMult"
+    "VZEROAplusCTotalMult",
+    "min(V0A,V0C)"
   };
 
 
@@ -2247,43 +2609,54 @@ void AliReducedVarManager::SetDefaultVarNames() {
   
   
   TString corrections[kNCorrections] = {
-    ", Vtx. corr. (global)",
-    ", Vtx. corr. (run-wise)",
-    ", Vtx. corr. (global) + gain loss corr.",
-    ", Vtx. corr. (run-wise) + gain loss corr.",
-    ", 2D Vertex + gain loss corr.",
-    ", gain loss corr."
+    ", vertex corr. ",
+    ", vertex corr. (in groups)",
+    ", gain loss corr.",
+    ", vertex corr. ",
+    ", vertex corr. (in groups)",
+    ", gain loss corr.",
   };
 
   TString referenceMultiplicities[kNReferenceMultiplicities] = {
-    ", (max mult)",
-    ", (min mult)",
-    ", (mean mult)"
+    " (max mult)",
+    " (min mult)",
+    " (mean mult)",
+    " (PYTHIA)",
+    " (EPOS)"
   };
 
   TString smearingMethods[kNSmearingMethods] = {
     "",
-    ", Poisson smeared"
+    ", Poisson smearing",
+  };
+  
+  TString generators[kNGenerators] = {
+    "PYTHIA",
+    "EPOS",
   };
 
   for( int iEstimator=0; iEstimator < kNMultiplicityEstimators; ++iEstimator){
     Int_t estimator = kMultiplicity + iEstimator;
     fgVariableNames[estimator] = multEstimators[iEstimator];
     fgVariableUnits[estimator]  = "";
-    for( int iCorrection = 0; iCorrection < kNCorrections; ++iCorrection){
+    for( int iCorrection = 0; iCorrection < kNCorrections; ++iCorrection ){
       for( int iReference=0; iReference < kNReferenceMultiplicities; ++iReference ){
-        for( int iSmearing=0; iSmearing < kNSmearingMethods; ++iSmearing){
-          Int_t index = GetCorrectedMultiplicity( estimator, iCorrection, iReference, iSmearing );
-          fgVariableNames[index] = Form("%s%s%s%s",
-                                        multEstimators[iEstimator].Data(),
-                                        corrections[iCorrection].Data(),
-                                        referenceMultiplicities[iReference].Data(),
-                                        smearingMethods[iSmearing].Data()
-                                   );
-          fgVariableUnits[index] = "";
+        for( int iSmearing=0; iSmearing < kNSmearingMethods; ++iSmearing ){
+          for( int iGenerator=0; iGenerator < kNGenerators; ++iGenerator ){
+            Int_t index = GetCorrectedMultiplicity( estimator, iCorrection, iReference, iSmearing, iGenerator );
+            fgVariableNames[index] = Form("%s%s%s%s%s",
+                                          multEstimators[iEstimator].Data(),
+                                          corrections[iCorrection].Data(),
+                                          referenceMultiplicities[iReference].Data(),
+                                          smearingMethods[iSmearing].Data(),
+                                          ( iCorrection == kVertexAlphaCorr || iCorrection == kRunAlphaCorr ? Form(", #alpha corr. (%s)", generators[iGenerator].Data()) : "" )
+                                    );
+            fgVariableUnits[index] = "";
+          }
         }
       }
     }
+    
   }
 
   
@@ -2389,8 +2762,18 @@ void AliReducedVarManager::SetDefaultVarNames() {
 
 
   fgVariableNames[kINT7Triggered]       = "event was triggered with INT7";       fgVariableUnits[kINT7Triggered]       = "";
-  fgVariableNames[kTRDTriggeredType]    = "event was triggered by TRD ele trigger"; fgVariableUnits[kTRDTriggeredType]       = "";
-  fgVariableNames[kHighMultV0Triggered] = "event was triggered with HighMultV0"; fgVariableUnits[kHighMultV0Triggered] = "";
+  fgVariableNames[kINELgt0]       = "INEL>0";       fgVariableUnits[kINELgt0]       = "";
+  fgVariableNames[kTriggeredVtxINELgt0] = "triggered, INEL>0, rec. vertex";       fgVariableUnits[kTriggeredVtxINELgt0]       = "";
+  fgVariableNames[kVtxZlt10]       = "|vtx_{z}|<10cm";       fgVariableUnits[kVtxZlt10]       = "";
+  fgVariableNames[kAllEventCuts]       = "all event cuts fulfilled";       fgVariableUnits[kAllEventCuts]       = "";
+  
+  
+  
+  fgVariableNames[kTRDTriggeredType]     = "event was triggered by TRD ele trigger"; fgVariableUnits[kTRDTriggeredType]     = "";
+  fgVariableNames[kHighMultV0Triggered]  = "event was triggered with HighMultV0";    fgVariableUnits[kHighMultV0Triggered]  = "";
+  fgVariableNames[kHighMultSPDTriggered] = "event was triggered with HighMultSPD";   fgVariableUnits[kHighMultSPDTriggered] = "";
+  fgVariableNames[kINT7orHM] = "event was triggered with MB or HM";   fgVariableUnits[kINT7orHM] = "";
+  fgVariableNames[kWhichTrigger] = "which trigger fired";   fgVariableUnits[kWhichTrigger] = "";
   
   
   fgVariableNames[kNMCtruthJpsi]       = "Number of MC Jpsi";       fgVariableUnits[kNMCtruthJpsi]       = "";
@@ -2539,6 +2922,8 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kPtSquared]     = "p_{T}^{2}";     fgVariableUnits[kPtSquared]     = "GeV^{2}/c^{2}";
   fgVariableNames[kOneOverSqrtPt] = "1/sqrt(p_{T})"; fgVariableUnits[kOneOverSqrtPt] = "GeV^{-1/2}";
   fgVariableNames[kMass]      = "m";         fgVariableUnits[kMass]        = "GeV/c^{2}";
+  fgVariableNames[kMassGamma]      = "m^{photon}";         fgVariableUnits[kMassGamma]        = "GeV/c^{2}";
+  fgVariableNames[kCanConstructGamma]      = "compatible with being a gamma";         fgVariableUnits[kCanConstructGamma]        = "yes/no";
   fgVariableNames[kMassMC]      = "m^{MC}";         fgVariableUnits[kMassMC]        = "GeV/c^{2}";
   fgVariableNames[kMassMCfromLegs]      = "m^{MC-legs}";         fgVariableUnits[kMassMCfromLegs]        = "GeV/c^{2}";
   fgVariableNames[kRap]       = "y";          fgVariableUnits[kRap]         = "";
@@ -2567,15 +2952,44 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kPairThetaHE]       = "cos(#theta^{*}_{HE})";  fgVariableUnits[kPairThetaHE]       = "";  
   fgVariableNames[kPairPhiHE]         = "#varphi^{*}_{HE}";      fgVariableUnits[kPairPhiHE]         = "rad.";
   fgVariableNames[kPairPhiV]          = "#varphi^{*}_{v}";       fgVariableUnits[kPairPhiV]          = "rad.";
-  fgVariableNames[kPairEff]           = "pair eff.";             fgVariableUnits[kPairEff]           = "";
-  fgVariableNames[kOneOverPairEff]    = "1/pair eff.";           fgVariableUnits[kOneOverPairEff]    = "";
-  fgVariableNames[kOneOverPairEffSq]  = "1/pair eff. squared";   fgVariableUnits[kOneOverPairEffSq]  = "";
+  for(int i=0; i<64; ++i){
+    fgVariableNames[kPairEff+i]           = Form("pair eff. (%dth cut)", i);             fgVariableUnits[kPairEff+i]           = "";
+    fgVariableNames[kOneOverPairEff+i]    = Form("1/pair eff. (%dth cut)", i);           fgVariableUnits[kOneOverPairEff+i]    = "";
+    fgVariableNames[kOneOverPairEffSq+i]  = Form("1/pair eff. squared (%dth cut)", i);   fgVariableUnits[kOneOverPairEffSq+i]  = "";
+    
+    for(Int_t iGenerator=0; iGenerator<kNGenerators; ++iGenerator){
+      fgVariableNames[kPairEventEff+i*kNGenerators + iGenerator]          = Form("pair * event eff. (%dth cut, %s)", i, generators[iGenerator].Data());            fgVariableUnits[kPairEventEff+i*kNGenerators + iGenerator]           = "";
+      fgVariableNames[kOneOverPairEventEff+i*kNGenerators + iGenerator]   = Form("1/pair * event eff. (%dth cut, %s)", i, generators[iGenerator].Data());           fgVariableUnits[kOneOverPairEventEff+i*kNGenerators + iGenerator]    = "";
+      fgVariableNames[kOneOverPairEventEffSq+i*kNGenerators + iGenerator] = Form("1/pair * event eff. squared (%dth cut, %s)", i, generators[iGenerator].Data());   fgVariableUnits[kOneOverPairEventEffSq+i*kNGenerators + iGenerator]  = "";
+    }
+  }
+    
+    fgVariableNames[kVtxEff]           = "vertex eff." ;            fgVariableUnits[kVtxEff]           = "";
+    fgVariableNames[kOneOverVtxEff]    = "1/vertex eff.";           fgVariableUnits[kOneOverVtxEff]    = "";
+    fgVariableNames[kOneOverVtxEffSq]  = "1/vertex eff. squared";   fgVariableUnits[kOneOverVtxEffSq]  = "";
+  
+    
+    
+    
+  for(Int_t iGenerator=0; iGenerator<kNGenerators; ++iGenerator){
+    fgVariableNames[kTriggerEff+iGenerator]           = Form("trigger eff. (%s)", generators[iGenerator].Data() ) ;            fgVariableUnits[kTriggerEff+iGenerator]           = "";
+    fgVariableNames[kOneOverTriggerEff+iGenerator]    = Form("1/trigger eff. (%s)", generators[iGenerator].Data() );           fgVariableUnits[kOneOverTriggerEff+iGenerator]    = "";
+    fgVariableNames[kOneOverTriggerEffSq+iGenerator]  = Form("1/trigger eff. squared (%s)", generators[iGenerator].Data() );   fgVariableUnits[kOneOverTriggerEffSq+iGenerator]  = "";
+  
+    fgVariableNames[kEventEff+iGenerator]           = Form("event eff. (%s)", generators[iGenerator].Data() ) ;            fgVariableUnits[kEventEff+iGenerator]           = "";
+    fgVariableNames[kOneOverEventEff+iGenerator]    = Form("1/event eff. (%s)", generators[iGenerator].Data() );           fgVariableUnits[kOneOverEventEff+iGenerator]    = "";
+    fgVariableNames[kOneOverEventEffSq+iGenerator]  = Form("1/event eff. squared (%s)", generators[iGenerator].Data() );   fgVariableUnits[kOneOverEventEffSq+iGenerator]  = "";
+  }
+  
+  
   for(Int_t i=0;i<2;++i) {
      fgVariableNames[kPairLegTPCchi2+i] = Form("TPC #chi^{2}, leg %d", i+1);
      fgVariableUnits[kPairLegTPCchi2+i] = "";
      fgVariableNames[kPairLegITSchi2+i] = Form("ITS #chi^{2}, leg %d", i+1);
      fgVariableUnits[kPairLegITSchi2+i] = "";
   }
+     fgVariableNames[kPairLegITSchi2+2] = "max(ITS #chi^{2})";
+     fgVariableUnits[kPairLegITSchi2+2] = "";
   
   fgVariableNames[kPtTPC]             = "p_{T}^{TPC}";                  fgVariableUnits[kPtTPC] = "GeV/c";
   fgVariableNames[kPhiTPC]            = "#varphi^{TPC}";                fgVariableUnits[kPhiTPC] = "rad.";
@@ -2597,6 +3011,8 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kITSncls]           = "No.ITS clusters";              fgVariableUnits[kITSncls] = "";
   fgVariableNames[kITSchi2]           = "ITS #chi^{2}";                 fgVariableUnits[kITSchi2] = "";
   fgVariableNames[kITSnclsShared]     = "No.of shared ITS clusters";              fgVariableUnits[kITSnclsShared] = "";
+  fgVariableNames[kITS1stClsShared]     = "First ITS cluster shared?";              fgVariableUnits[kITS1stClsShared] = "";
+  fgVariableNames[kITSnot1stClsShared]     = "ITS cluster shared (expect 1st)?";              fgVariableUnits[kITSnot1stClsShared] = "";
   fgVariableNames[kNclsSFracITS]      = "Fraction of shared ITS clusters/ITS clusters";fgVariableUnits[kNclsSFracITS] = "";
   fgVariableNames[kITSlayerHit]       = "ITS layer";                    fgVariableUnits[kITSlayerHit] = "";
   fgVariableNames[kITSsignal]         = "ITS dE/dx";                    fgVariableUnits[kITSsignal] = "";    
@@ -2667,6 +3083,11 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kDeltaTheta]    = "#Delta #theta";              fgVariableUnits[kDeltaTheta]    = "rad.";
   fgVariableNames[kDeltaEta]      = "#Delta #eta";                fgVariableUnits[kDeltaEta]      = "";
   fgVariableNames[kDeltaEtaAbs]   = "|#Delta #eta|";              fgVariableUnits[kDeltaEtaAbs]   = "";
+  fgVariableNames[kPtProd]   = "p_{T,1} * p_{T12}";               fgVariableUnits[kPtProd]   = "GeV^2/c^2";
+  fgVariableNames[kEtaDiff]   = "|#eta_{1} - #eta_{2}|";          fgVariableUnits[kEtaDiff]   = "";
+  fgVariableNames[kPhiDiff]   = "|#phi_{1} - #phi_{2}|";          fgVariableUnits[kPhiDiff]   = "";
+  fgVariableNames[kTrack1Pt]   = "p_{T} daughter1";               fgVariableUnits[kTrack1Pt]   = "GeV/c";
+  fgVariableNames[kTrack2Pt]   = "p_{T} daughter2";               fgVariableUnits[kTrack2Pt]   = "GeV/c";
   fgVariableNames[kTriggerPt]     = "p_{T} trigger particle";     fgVariableUnits[kTriggerPt]     = "GeV/c";
   fgVariableNames[kTriggerRap]    = "#it{y} trigger particle";    fgVariableUnits[kTriggerRap]    = "";
   fgVariableNames[kTriggerRapAbs] = "|#it{y}| trigger particle";  fgVariableUnits[kTriggerRapAbs] = "";
@@ -2754,7 +3175,7 @@ void AliReducedVarManager::SetTPCelectronCorrectionMaps(TH2F* centroidMap, TH2F*
 }
 
 //____________________________________________________________________________________
-void AliReducedVarManager::SetPairEfficiencyMap(TH2F* effMap, AliReducedVarManager::Variables varX, AliReducedVarManager::Variables varY) {
+void AliReducedVarManager::AddPairEfficiencyMap(TH2* effMap, AliReducedVarManager::Variables varX, AliReducedVarManager::Variables varY) {
   //
   // initialize the pair efficiency map
   //
@@ -2768,13 +3189,65 @@ void AliReducedVarManager::SetPairEfficiencyMap(TH2F* effMap, AliReducedVarManag
     cout << "                           Efficiency map not used! Check it out!" << endl;
     return;
   }
-  fgEffMapVarDependencyX = varX; 
-  fgEffMapVarDependencyY = varY;
+  fgPairEffMapVarDependencyX.push_back(varX); 
+  fgPairEffMapVarDependencyY.push_back(varY);
   if(effMap) {
-    fgPairEffMap = (TH2F*)effMap->Clone(Form("AliReducedVarManager_PairEffMap"));
-    fgPairEffMap->SetDirectory(0x0);
+    fgPairEffMaps.push_back ( (TH2*)effMap->Clone(Form("AliReducedVarManager_PairEffMap")));
+    fgPairEffMaps.back()->SetDirectory(0x0);
   }
 }
+
+
+
+//____________________________________________________________________________________
+void AliReducedVarManager::SetTriggerEfficiencyMap(TH1* effMap, AliReducedVarManager::Variables var, Int_t generator ) {
+  //
+  // initialize the pair efficiency map
+  //
+  if(var>kNVars || var<=kNothing) {
+    cout << "AliReducedVarManager::SetTriggerEfficiencyMap() The X-dependency variable is not a valid variable defined in AliReducedVarManager" << endl;
+    cout << "                           Efficiency map not used! Check it out!" << endl;
+    return;
+  }
+
+  if(generator >= kNGenerators){
+    cout << "AliReducedVarManager::SetTriggerEfficiencyMap() Generator not defined!" <<endl;
+    return;
+  }
+  fgTriggerEffMapVarDependency = var;
+  if(effMap) {
+    fgTriggerEffMap[generator] = (TH1*)effMap->Clone(Form("AliReducedVarManager_TriggerEffMap"));
+    fgTriggerEffMap[generator]->SetDirectory(0x0);
+  }
+  else{
+    cout << "AliReducedVarManager::SetTriggerEfficiencyMap() efficiency map null!" <<endl;
+    return;
+  }
+}
+
+//____________________________________________________________________________________
+void AliReducedVarManager::SetVertexEfficiencyMap(TH1* effMap, AliReducedVarManager::Variables var ) {
+  //
+  // initialize the pair efficiency map
+  //
+  if(var>kNVars || var<=kNothing) {
+    cout << "AliReducedVarManager::SetVertexEfficiencyMap() The X-dependency variable is not a valid variable defined in AliReducedVarManager" << endl;
+    cout << "                           Efficiency map not used! Check it out!" << endl;
+    return;
+  }
+
+  fgVtxEffMapVarDependency = var;
+  if(effMap) {
+    fgVtxEffMap = (TH1*)effMap->Clone(Form("AliReducedVarManager_VertexEffMap"));
+    fgVtxEffMap->SetDirectory(0x0);
+  }
+  else{
+    cout << "AliReducedVarManager::SetVertexEfficiencyMap() efficiency map null!" <<endl;
+    return;
+  }
+}
+
+
 
 //____________________________________________________________________________________
 void AliReducedVarManager::SetLHCDataInfo(TH1F* totalLumi, TH1F* totalInt0, TH1F* totalInt1, TH1I* fillNumber) {
@@ -2832,23 +3305,128 @@ void AliReducedVarManager::SetRunNumbers( TString runNumbers ){
   }
 }
 
+
 //____________________________________________________________________________________
-void AliReducedVarManager::SetMultiplicityProfile(TH2* profile, Int_t estimator) {
+void AliReducedVarManager::AddRunGroup( Int_t runNumber, Int_t runGroup  ){
+  fgRunGroups.insert( std::pair<Int_t, Int_t>( runNumber, runGroup ) ); 
+}
+
+//____________________________________________________________________________________
+void AliReducedVarManager::AddPeriod( Int_t runNumber ){
+  fgPeriods.push_back( runNumber ); 
+}
+
+
+
+//____________________________________________________________________________________
+void AliReducedVarManager::SetMultiplicityProfile(TH1* profile, Int_t estimator, Int_t var) {
    //
    // initialize the profile for the z-vertex equalization of the multiplicity estimator
    //
   Int_t iEstimator = estimator - kMultiplicity;
   if( iEstimator >= kNMultiplicityEstimators ){
-    cout << "Multiplcity estimator " << estimator << " not defined!" <<endl;
+    cout << "Multiplicity estimator " << estimator << " not defined!" <<endl;
     return;
   }
   if(!profile){
-    cout <<"AliReducedVarManager::SetMultiplicityProfile : Profile null!"  << endl;
+    cout <<"AliReducedVarManager::SetMultiplicityProfile : Profile null! (estimator " << estimator << " , var " << var << ")"  << endl;
     return;
   }
-  fgAvgMultVsVtxAndRun[iEstimator] = (TH2*)profile->Clone( Form("profile_%d", estimator  ));
-  fgAvgMultVsVtxAndRun[iEstimator]->SetDirectory(0x0);
+  if(var!=kVtxZ && var!=kRunID  ){
+    cout <<"AliReducedVarManager::SetMultiplicityProfile : Only run and vtx profiles implemented!"  << endl;
+    return;
+  }
+  if(var==kVtxZ){
+    fgAvgMultVsVtx[iEstimator] = (TH1*)profile->Clone( Form("profile_vtx_%d", estimator  ));
+    fgAvgMultVsVtx[iEstimator]->SetDirectory(0x0);
+  }
+  else if(var==kRunID){
+    fgAvgMultVsRun[iEstimator] = (TH1*)profile->Clone( Form("profile_run_%d", estimator  ));
+    fgAvgMultVsRun[iEstimator]->SetDirectory(0x0);
+  }
 }
+
+
+
+
+//____________________________________________________________________________________
+void AliReducedVarManager::SetMultiplicityProfile2D(TH2* profile, Int_t estimator, Int_t var1, Int_t var2) {
+   //
+   // initialize the profile for the z-vertex equalization of the multiplicity estimator
+   //
+  Int_t iEstimator = estimator - kMultiplicity;
+  if( iEstimator >= kNMultiplicityEstimators ){
+    cout << "Multiplicity estimator " << estimator << " not defined!" <<endl;
+    return;
+  }
+  if(!profile){
+    cout <<"AliReducedVarManager::SetMultiplicityProfile2D : Profile null! (estimator " << estimator << " , var1 " << var1 << " , var2 " << var2 <<   ")"  << endl;
+    return;
+  }
+  if(var1!=kVtxZ && var2!=kRunGroup  ){
+    cout <<"AliReducedVarManager::SetMultiplicityProfile2D : Only vtx vs run group profiles implemented!"  << endl;
+    return;
+  }
+  fgAvgMultVsVtx_groups[iEstimator] = (TH2*)profile->Clone( Form("profile_vtx_groups_%d", estimator  ));
+  fgAvgMultVsVtx_groups[iEstimator]->SetDirectory(0x0);
+}
+
+
+
+
+//____________________________________________________________________________________
+void AliReducedVarManager::SetAlphaProfile(TH1* alpha, Int_t estimator, Int_t correctionMethod, Int_t referenceMultiplicity, Int_t smearing, Int_t generator) {
+   //
+   // initialize the alpha for the z-vertex equalization of the multiplicity estimator
+   //
+
+  if(correctionMethod >= 2){
+    cout << "AliReducedVarManager::SetAlphaProfile: Only vtx or gain loss correction possible!" <<endl;
+    return;
+  }
+  if(referenceMultiplicity >= kNReferenceMultiplicities){
+    cout << "AliReducedVarManager::SetAlphaProfile: Reference multiplicity not defined!" <<endl;
+    return;
+  }
+  if(smearing >= kNSmearingMethods){
+    cout << "AliReducedVarManager::SetAlphaProfile: Smearing method not defined!" <<endl;
+    return;
+  }
+  if(generator >= kNGenerators){
+    cout << "AliReducedVarManager::SetAlphaProfile: Generator not defined!" <<endl;
+    return;
+  }
+  Int_t iEstimator = estimator - kMultiplicity;
+  if( iEstimator >= kNMultiplicityEstimators ){
+    cout << "AliReducedVarManager::SetAlphaProfile: Multiplicity estimator " << estimator << " not defined!" <<endl;
+    return;
+  }
+  if(!alpha){
+    cout <<"AliReducedVarManager::SetAlphaProfile : Histogram null!"  << endl;
+    return;
+  }
+  fgAlpha[iEstimator][correctionMethod][referenceMultiplicity][smearing][generator] = (TH1*)alpha->Clone( Form("alpha_%d", estimator  ));
+  fgAlpha[iEstimator][correctionMethod][referenceMultiplicity][smearing][generator]->SetDirectory(0x0);
+}
+
+
+
+
+//____________________________________________________________________________________
+void AliReducedVarManager::SetRateHist(TH1* rate) {
+   //
+   // initialize the alpha for the z-vertex equalization of the multiplicity estimator
+   //
+
+  if(!rate){
+    cout <<"AliReducedVarManager::SetRateHist : Histogram null!"  << endl;
+    return;
+  }
+  fgRate = (TH1*)rate->Clone("interactionRate");
+  fgRate->SetDirectory(0x0);
+}
+
+
 
 //____________________________________________________________________________________
 void AliReducedVarManager::SetVZEROCalibrationPath(const Char_t* path) {
@@ -2876,26 +3454,33 @@ void AliReducedVarManager::SetRecenterVZEROqVector(Bool_t option) {
 }
 
 //____________________________________________________________________________________
-Int_t AliReducedVarManager::GetCorrectedMultiplicity( Int_t estimator,  Int_t correction, Int_t reference, Int_t smearing ){
+Int_t AliReducedVarManager::GetCorrectedMultiplicity( Int_t estimator,  Int_t correction, Int_t reference, Int_t smearing, Int_t generator ){
   //
   // Return the index of the multiplicity estimator, for given
   // - estimator
-  // - correction ( correction wrt. vertex, vertex and run number (1D or 2D) )
+  // - correction ( >-1 :correction wrt. vertex, vertex and run number (1D or 2D) )
   // - reference bin (bin with maximum or minimum efficiency)
   // - smearing method
   //
-  Int_t iEstimator = estimator - kMultiplicity;
-  Int_t nPerEstimator = kNCorrections * kNReferenceMultiplicities * kNSmearingMethods;
-  Int_t ret = kCorrectedMultiplicity + iEstimator * nPerEstimator;
-  ret += correction * kNReferenceMultiplicities * kNSmearingMethods;
-  ret += reference * kNSmearingMethods;
-  ret += smearing;
-  return ret;
+  if(correction > -1){
+    Int_t iEstimator = estimator - kMultiplicity;
+    Int_t nPerEstimator = 1 + kNCorrections * kNReferenceMultiplicities * kNSmearingMethods * kNGenerators;
+    Int_t ret = kCorrectedMultiplicity + iEstimator * nPerEstimator;
+    ret += correction * kNReferenceMultiplicities * kNSmearingMethods * kNGenerators;
+    ret += reference * kNSmearingMethods * kNGenerators;
+    ret += smearing * kNGenerators;
+    ret += generator;
+    return ret;
+  }
+  else if(correction ==  -1){
+    return estimator;
+  }
+  return 0;
 }
 
 
 //____________________________________________________________________________________
-AliKFParticle AliReducedVarManager::BuildKFcandidate(TRACK* track1, Float_t mh1, TRACK* track2, Float_t mh2) {
+AliKFParticle AliReducedVarManager::BuildKFcandidate(TRACK* track1, Float_t mh1, TRACK* track2, Float_t mh2, Bool_t buildGamma) {
    //
    // build a KF pair from the 2 legs
    //
@@ -2914,9 +3499,16 @@ AliKFParticle AliReducedVarManager::BuildKFcandidate(TRACK* track1, Float_t mh1,
  //
  AliKFParticle pairKF; 
  pairKF.Initialize();
- pairKF.AddDaughter(kfPart1);
- pairKF.AddDaughter(kfPart2);
- 
+
+ if( buildGamma ){
+   pairKF.SetField (-0.5);
+   pairKF.ConstructGamma(kfPart1, kfPart2  );
+
+ }
+ else{
+   pairKF.AddDaughter(kfPart1);
+   pairKF.AddDaughter(kfPart2);
+ }
  return pairKF;
 }
 

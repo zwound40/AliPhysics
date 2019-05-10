@@ -61,10 +61,10 @@ class AliReducedEventInfo : public AliReducedBaseEvent {
   UInt_t    ITSClusters(Int_t layer)          const {return (layer>=1 && layer<=6 ? fITSClusters[layer-1] : 0);}
   Int_t     SPDnSingleClusters()              const {return fSPDnSingle;}
   Int_t     TracksPerTrackingFlag(Int_t flag) const {return (flag>=0 && flag<32 ? fNtracksPerTrackingFlag[flag] : -999);}
-  Int_t     Nch16 (Bool_t exclJpsiDau = kFALSE )  const {return (exclJpsiDau? fNch[0] : fNch[1] );}
-  Int_t     Nch10 (Bool_t exclJpsiDau = kFALSE )  const {return (exclJpsiDau? fNch[2] : fNch[3] );}
-  Int_t     NchV0A(Bool_t exclJpsiDau = kFALSE ) const {return (exclJpsiDau? fNch[4] : fNch[5] );}
-  Int_t     NchV0C(Bool_t exclJpsiDau = kFALSE ) const {return (exclJpsiDau? fNch[6] : fNch[7] );}
+  Int_t     Nch16 (Bool_t exclJpsiDau = kFALSE )  const {return (exclJpsiDau? fNch[1] : fNch[0] );}
+  Int_t     Nch10 (Bool_t exclJpsiDau = kFALSE )  const {return (exclJpsiDau? fNch[3] : fNch[2] );}
+  Int_t     NchV0A(Bool_t exclJpsiDau = kFALSE ) const {return (exclJpsiDau? fNch[5] : fNch[4] );}
+  Int_t     NchV0C(Bool_t exclJpsiDau = kFALSE ) const {return (exclJpsiDau? fNch[7] : fNch[6] );}
   
   Float_t   MultEstimatorOnlineV0M()   const {return fMultiplicityEstimators[0];}
   Float_t   MultEstimatorOnlineV0A()   const {return fMultiplicityEstimators[1];}
@@ -98,6 +98,9 @@ class AliReducedEventInfo : public AliReducedBaseEvent {
   Float_t   MultVZEROA()                      const;
   Float_t   MultVZEROC()                      const;
   Float_t   MultVZERO()                       const;
+  Float_t   MultVZEROAonline()                    const {return fVZEROTotalMultOnline[0];}
+  Float_t   MultVZEROConline()                    const {return fVZEROTotalMultOnline[1];}
+  Float_t   MultVZEROonline()                     const {return fVZEROTotalMultOnline[0] + fVZEROTotalMultOnline[1];}
   Float_t   MultRingVZEROA(Int_t ring)        const;
   Float_t   MultRingVZEROC(Int_t ring)        const;
   
@@ -193,6 +196,7 @@ class AliReducedEventInfo : public AliReducedBaseEvent {
   Int_t     fNch[8];                // number of MCtruth charged particles in different eta regions
   Float_t   fVZEROMult[64];         // VZERO multiplicity in all 64 channels
   Float_t   fVZEROTotalMult[2];    // Total VZERO multiplicity
+  Float_t   fVZEROTotalMultOnline[2];    // Total VZERO multiplicity, equalized
   Float_t   fZDCnEnergy[10];         // neutron ZDC energy in all 8 channels
   Float_t   fZDCpEnergy[10];         // proton ZDC energy in all 8 channels
   Float_t   fZDCnTotalEnergy[2];   // total neutron ZDC energy
@@ -217,7 +221,7 @@ class AliReducedEventInfo : public AliReducedBaseEvent {
   AliReducedEventInfo& operator= (const AliReducedEventInfo &c);
   AliReducedEventInfo(const AliReducedEventInfo &c);
 
-  ClassDef(AliReducedEventInfo, 9);
+  ClassDef(AliReducedEventInfo, 10);
 };
 
 #endif

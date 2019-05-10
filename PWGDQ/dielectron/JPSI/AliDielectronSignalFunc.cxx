@@ -114,6 +114,7 @@
 #include <TPaveText.h>
 #include <TList.h>
 #include <TFitResult.h>
+#include <TVirtualFitter.h>
 //#include <../hist/hist/src/TF1Helper.h>
 
 #include <AliLog.h>
@@ -201,8 +202,7 @@ void AliDielectronSignalFunc::Process(TObjArray * const arrhist)
   case kLikeSignRcorr:
   case kLikeSignArithmRcorr:
     ProcessLS(arrhist);    // process like-sign subtraction method
-    break;
-
+  break;
   case kEventMixing :
     ProcessEM(arrhist);    // process event mixing method
     break;
@@ -421,12 +421,34 @@ void AliDielectronSignalFunc::ProcessCombinatorialPlusFit(TObjArray * const arrh
   fHistDataPM = (TH1*)(arrhist->At(AliDielectron::kEv1PM))->Clone("histPM");  // +-    SE
   fHistCombinatorialBackground = (TH1*)(arrhist->At(AliDielectron::kEv1PMRot))->Clone("histCombinatorial");
   
+    fHistBackground = new TH1F("HistBackground", "Fit contribution",
+                             fHistDataPM->GetXaxis()->GetNbins(),
+                             fHistDataPM->GetXaxis()->GetXmin(), fHistDataPM->GetXaxis()->GetXmax());
+  
+  
+  fHistSignal = new TH1F("HistSignal", "Fit substracted signal",
+                         fHistDataPM->GetXaxis()->GetNbins(),
+                         fHistDataPM->GetXaxis()->GetXmin(), fHistDataPM->GetXaxis()->GetXmax());
+
+  
+  std::cout << fHistDataPM->GetEntries() << " entries" << std::endl;
+  
+    if(fHistDataPM->GetEntries()  < 100. ) {
+      for(int i=0; i<4; ++i){
+        fValues(i) = 0.; 
+        fErrors(i) = 0.;
+      }
+      return;
+    }
+  
+  
+  
+  
   
   fHistDataPM->Sumw2(kFALSE);
   fHistDataPM->SetBinErrorOption(TH1::kPoisson);
   
-  
-  
+
   
   if(fHistCombinatorialBackground->GetDefaultSumw2()) fHistCombinatorialBackground->Sumw2();
   fHistDataPM->SetDirectory(0);
@@ -440,10 +462,8 @@ void AliDielectronSignalFunc::ProcessCombinatorialPlusFit(TObjArray * const arrh
   }
   
   
-  fHistBackground = new TH1F("HistBackground", "Fit contribution",
-                             fHistDataPM->GetXaxis()->GetNbins(),
-                             fHistDataPM->GetXaxis()->GetXmin(), fHistDataPM->GetXaxis()->GetXmax());
 
+  
   
   // Step 1 : scale TR to OS
   // this will be the histogram containing the combinatorial background
@@ -471,12 +491,27 @@ void AliDielectronSignalFunc::ProcessCombinatorialPlusFit(TObjArray * const arrh
       Double_t exl = fHistDataPM->GetXaxis()->GetBinWidth(ibin) / 2.;
       Double_t exh = exl;
       
-      Double_t denominator = fHistCombinatorialBackground->GetBinContent(ibin) > 0. ? fHistCombinatorialBackground->GetBinContent(ibin) : 1.;
+      Double_t bg = fHistCombinatorialBackground->GetBinContent(ibin) > 0. ? fHistCombinatorialBackground->GetBinContent(ibin) : 1.;
+      Double_t e_bg = fHistCombinatorialBackground->GetBinError(ibin);
+      if (TMath::Abs(e_bg)<1e-30) e_bg=fgkErrorZero;
       
-      Double_t y = fHistDataPM->GetBinContent(ibin) / denominator ;
-      Double_t eyl = fHistDataPM->GetBinErrorLow(ibin)/ denominator;
-      Double_t eyh = fHistDataPM->GetBinErrorUp(ibin) / denominator;
-
+      
+      
+      
+      
+      Double_t pm = fHistDataPM->GetBinContent(ibin);
+      Double_t e_pm_low = fHistDataPM->GetBinErrorLow(ibin);
+      Double_t e_pm_up  = fHistDataPM->GetBinErrorUp( ibin);
+      
+      
+      
+      Double_t y =  pm / bg ;
+      
+      
+      Double_t eyl = TMath::Sqrt( TMath::Power( e_pm_low / bg , 2 ) +  TMath::Power( e_bg * pm / ( bg * bg ) , 2 ) )  ;
+      Double_t eyh = TMath::Sqrt( TMath::Power( e_pm_up  / bg , 2 ) +  TMath::Power( e_bg * pm / ( bg * bg ) , 2 ) )  ;
+      if (TMath::Abs(eyl)<1e-30) eyl=fgkErrorZero/ bg;
+      if (TMath::Abs(eyh)<1e-30) eyh=fgkErrorZero/ bg;
       
       hRatioPMtoCombinatorial->SetPoint( ipoint, x, y ) ;
       hRatioPMtoCombinatorial->SetPointError( ipoint, exl, exh, eyl, eyh) ; 
@@ -487,8 +522,24 @@ void AliDielectronSignalFunc::ProcessCombinatorialPlusFit(TObjArray * const arrh
   // Step 4 : Fit correlated bg
   
   fFuncBackground->SetParameters(fFuncSigBack->GetParameters()+fFuncSignal->GetNpar());
+  
+//   std::cout << "fitting from " << fFitMin << " to " << fFitMax << std::endl;
+  
+  
+//   hRatioPMtoCombinatorial->Fit(fFuncBackground, fFitOpt.Data(), "", fFitMin-1., fFitMax+1.);
+//   hRatioPMtoCombinatorial->Fit(fFuncBackground, fFitOpt.Data(), "", fFitMin-1., fFitMax-1.);
+  
   TFitResultPtr pmFitPtr = hRatioPMtoCombinatorial->Fit(fFuncBackground, fFitOpt.Data(), "", fFitMin, fFitMax);
   TFitResult *pmFitResult = pmFitPtr.Get(); // used only with TF1Helper
+  
+  TVirtualFitter * fitter = TVirtualFitter::Fitter(0,3);
+  Double_t par[3] = {fitter->GetParameter(0), fitter->GetParameter(1), 
+             fitter->GetParameter(2)};
+  
+  
+  
+  
+  
   if(pmFitResult){
     fDof =  pmFitResult->Ndf();
     if(fDof) fChi2Dof = pmFitResult->Chi2() / fDof;
@@ -503,26 +554,27 @@ void AliDielectronSignalFunc::ProcessCombinatorialPlusFit(TObjArray * const arrh
   hCorrelatedBackground.Eval(fFuncBackground);
   
   
+  Double_t binWidth = fHistDataPM->GetBinWidth(1);
+  
   for( int ibin = 1; ibin < fHistDataPM->GetXaxis()->GetNbins(); ++ibin ) {
-    Double_t inte  = fFuncBackground->IntegralError(  fHistDataPM->GetBinLowEdge(ibin), fHistDataPM->GetBinLowEdge(ibin+1) ) / fHistDataPM->GetBinWidth(1);
+    Double_t inte  = fFuncBackground->IntegralError(  fHistDataPM->GetBinLowEdge(ibin), fHistDataPM->GetBinLowEdge(ibin+1), par,fitter->GetCovarianceMatrix()  ) / binWidth;
     hCorrelatedBackground.SetBinError(ibin, inte);
   }
 
+  
+
+  
   
   // Step 5 : bg = combinatorial bg * fit of correlated bg
   
   fHistBackground = (TH1*) fHistCombinatorialBackground->Clone("histBackground");
   fHistBackground->Multiply( &hCorrelatedBackground );
-  fHistSignal = new TH1F("HistSignal", "Fit substracted signal",
-                         fHistDataPM->GetXaxis()->GetNbins(),
-                         fHistDataPM->GetXaxis()->GetXmin(), fHistDataPM->GetXaxis()->GetXmax());
   
   for(Int_t iBin=1; iBin<=fHistDataPM->GetXaxis()->GetNbins(); iBin++) {
     Double_t pm = fHistDataPM->GetBinContent(iBin);
     Double_t epm = (fHistDataPM->GetBinError(iBin) < 1e-30 ? fgkErrorZero : fHistDataPM->GetBinError(iBin));
     Double_t bknd = fHistBackground->GetBinContent(iBin);
     Double_t ebknd = fHistBackground->GetBinError(iBin);
-
     Double_t signal = pm-bknd;
     Double_t error = TMath::Sqrt(epm*epm+ebknd*ebknd);
     fHistSignal->SetBinContent(iBin, signal);
@@ -530,19 +582,20 @@ void AliDielectronSignalFunc::ProcessCombinatorialPlusFit(TObjArray * const arrh
   }
 
   // signal
-  fValues(0) = fHistSignal->IntegralAndError(fHistSignal->FindBin(fIntMin),
-                                              fHistSignal->FindBin(fIntMax), fErrors(0));
-  // background
-  fValues(1) = fHistBackground->IntegralAndError(fHistBackground->FindBin(fIntMin),
-                          fHistBackground->FindBin(fIntMax),
-                          fErrors(1));
-  // S/B and significance
+   fValues(0) = fHistSignal->IntegralAndError(fHistSignal->FindBin(fIntMin),
+                                               fHistSignal->FindBin(fIntMax), fErrors(0));
+//   // background
+   fValues(1) = fHistBackground->IntegralAndError(fHistBackground->FindBin(fIntMin),
+                           fHistBackground->FindBin(fIntMax),
+                           fErrors(1));
+//   // S/B and significance
+//   SetSignificanceAndSOB();
+//   fValues(4) = fFuncSigBack->GetParameter(fParMass);
+//   fErrors(4) = fFuncSigBack->GetParError(fParMass);
+//   fValues(5) = fFuncSigBack->GetParameter(fParMassWidth);
+//   fErrors(5) = fFuncSigBack->GetParError(fParMassWidth);
+  DescribePeakShape(fPeakMethod, kTRUE, fHistSimPM); 
   SetSignificanceAndSOB();
-  fValues(4) = fFuncSigBack->GetParameter(fParMass);
-  fErrors(4) = fFuncSigBack->GetParError(fParMass);
-  fValues(5) = fFuncSigBack->GetParameter(fParMassWidth);
-  fErrors(5) = fFuncSigBack->GetParError(fParMassWidth);
-  
   fProcessed = kTRUE;
 
 }

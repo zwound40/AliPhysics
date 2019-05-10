@@ -64,7 +64,8 @@ class AliHistogramManager : public TObject {
                         Int_t nDimensions,
                         TAxis* axis);
   
-  void FillHistClass(const Char_t* className, Float_t* values);
+  void FillHistClass(const Char_t* className, Float_t* values, UInt_t cutNumber=0);
+  void AdaptToCut( Int_t & var, UInt_t cutNumber);
   
   void SetUseDefaultVariableNames(Bool_t flag) {fUseDefaultVariableNames = flag;};
   void SetDefaultVarNames(TString* vars, TString* units);

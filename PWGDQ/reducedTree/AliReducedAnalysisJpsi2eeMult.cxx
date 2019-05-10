@@ -293,7 +293,9 @@ void AliReducedAnalysisJpsi2eeMult::Process() {
     fValues[AliReducedVarManager::kNtracksPosAnalyzed] = fPosTracks.GetEntries();
     fValues[AliReducedVarManager::kNtracksNegAnalyzed] = fNegTracks.GetEntries();
     fValues[AliReducedVarManager::kNtracksAnalyzed] = fValues[AliReducedVarManager::kNtracksNegAnalyzed]+fValues[AliReducedVarManager::kNtracksPosAnalyzed];
-    fValues[AliReducedVarManager::kEvAverageTPCchi2] /= (fPosTracks.GetEntries()+fNegTracks.GetEntries()>0 ? fValues[AliReducedVarManager::kNtracksAnalyzed] : 1.0); 
+    fValues[AliReducedVarManager::kEvAverageTPCchi2] /= (fPosTracks.GetEntries()+fNegTracks.GetEntries()>0 ? fValues[AliReducedVarManager::kNtracksAnalyzed] : 1.0);
+    fValues[AliReducedVarManager::kEvAveragegoldenchi2] /= (fPosTracks.GetEntries()+fNegTracks.GetEntries()>0 ? fValues[AliReducedVarManager::kNtracksAnalyzed] : 1.0);
+    fValues[AliReducedVarManager::kEvAverageITSchi2] /= (fPosTracks.GetEntries()+fNegTracks.GetEntries()>0 ? fValues[AliReducedVarManager::kNtracksAnalyzed] : 1.0); 
   }
   
   // Fill track histograms
@@ -425,11 +427,11 @@ void AliReducedAnalysisJpsi2eeMult::FillPairHistograms(ULong_t mask, Int_t pairT
    TString typeStr[3] = {"PP", "PM", "MM"};
    for(Int_t icut=0; icut<fTrackCuts.GetEntries(); ++icut) {
       if(mask & (ULong_t(1)<<icut)) {
-         fHistosManager->FillHistClass(Form("%s%s_%s", pairClass.Data(), typeStr[pairType].Data(), fTrackCuts.At(icut)->GetName()), fValues);
+         fHistosManager->FillHistClass(Form("%s%s_%s", pairClass.Data(), typeStr[pairType].Data(), fTrackCuts.At(icut)->GetName()), fValues, icut);
          if(mcDecisions && pairType==1) {
             for(Int_t iMC=0; iMC<=fLegCandidatesMCcuts.GetEntries(); ++iMC) {
                if(mcDecisions & (UInt_t(1)<<iMC))
-                  fHistosManager->FillHistClass(Form("%s%s_%s_%s", pairClass.Data(), typeStr[pairType].Data(), fTrackCuts.At(icut)->GetName(), fLegCandidatesMCcuts.At(iMC)->GetName()), fValues);
+                  fHistosManager->FillHistClass(Form("%s%s_%s_%s", pairClass.Data(), typeStr[pairType].Data(), fTrackCuts.At(icut)->GetName(), fLegCandidatesMCcuts.At(iMC)->GetName()), fValues, icut);
             }
          }
       }
@@ -445,6 +447,9 @@ void AliReducedAnalysisJpsi2eeMult::RunTrackSelection() {
    // clear the track arrays
    fPosTracks.Clear("C"); fNegTracks.Clear("C"); fPrefilterPosTracks.Clear("C"); fPrefilterNegTracks.Clear("C");
    fValues[AliReducedVarManager::kEvAverageTPCchi2] = 0.0;
+   fValues[AliReducedVarManager::kEvAverageITSchi2] = 0.0;
+   fValues[AliReducedVarManager::kEvAveragegoldenchi2] = 0.0;
+   fValues[AliReducedVarManager::kEvAverageITSchi2Nonzero] = 0.0;
    
    // loop over the track list(s) and evaluate all the track cuts
    LoopOverTracks(1);      // first array
@@ -494,12 +499,17 @@ void AliReducedAnalysisJpsi2eeMult::LoopOverTracks(Int_t arrayOption /*=1*/) {
          if(track->Charge()>0) fPosTracks.Add(track);
          if(track->Charge()<0) fNegTracks.Add(track);
          
-         if(track->IsA() == AliReducedTrackInfo::Class())
-            fValues[AliReducedVarManager::kEvAverageTPCchi2] += ((AliReducedTrackInfo*)track)->TPCchi2();
+         if(track->IsA() == AliReducedTrackInfo::Class()){
+            
+         }
       }
       if(IsTrackPrefilterSelected(track, fValues)) {
          if(track->Charge()>0) fPrefilterPosTracks.Add(track);
          if(track->Charge()<0) fPrefilterNegTracks.Add(track);
+   //         fValues[AliReducedVarManager::kEvAverageTPCchi2] += ((AliReducedTrackInfo*)track)->TPCchi2();
+     //       fValues[AliReducedVarManager::kEvAverageITSchi2] += ((AliReducedTrackInfo*)track)->ITSchi2();
+       //     fValues[AliReducedVarManager::kEvAveragegoldenchi2] += ((AliReducedTrackInfo*)track)->Chi2TPCConstrainedVsGlobal();
+         //   fValues[AliReducedVarManager::kEvAverageITSchi2Nonzero] = 1; 
       }
    }   // end loop over tracks
 }

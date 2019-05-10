@@ -129,7 +129,7 @@ public:
   TObject* DescribePeakShape(ESignalExtractionMethod method, Bool_t replaceValErr=kFALSE,  TH1F *mcShape=0x0);
 
   TObject* fPeakShapeObj;       // histogram or function used to describe the extracted signal
-  TH1F* fHistSimPM;          // simulated peak shape
+  static TH1F* fHistSimPM;          // simulated peak shape
 
 protected: 
 

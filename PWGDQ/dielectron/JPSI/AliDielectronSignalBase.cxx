@@ -43,7 +43,9 @@ ClassImp(AliDielectronSignalBase)
 const char* AliDielectronSignalBase::fgkValueNames[6] = {
   "Signal","Background","Significance","Signal/Background","Mass","MassWidth"};
 const Double_t AliDielectronSignalBase::fgkErrorZero = 0.5 * TMath::ChisquareQuantile(0.6827,2);
-  
+TH1F*  AliDielectronSignalBase::fHistSimPM = 0x0;  
+
+
 AliDielectronSignalBase::AliDielectronSignalBase() :
   TNamed(),
   fHistSignal(0),
@@ -54,7 +56,7 @@ AliDielectronSignalBase::AliDielectronSignalBase() :
   fHistDataME(0),
   fHistRfactor(0),
   fPeakShapeObj(0x0),
-  fHistSimPM(0x0),
+//   fHistSimPM(0x0),
   fValues(6),
   fErrors(6),
   fIntMin(0),
@@ -90,7 +92,7 @@ AliDielectronSignalBase::AliDielectronSignalBase(const char* name, const char* t
   fHistDataME(0),
   fHistRfactor(0),
   fPeakShapeObj(0x0),
-  fHistSimPM(0x0),
+//   fHistSimPM(0x0),
   fValues(6),
   fErrors(6),
   fIntMin(0),
@@ -125,7 +127,7 @@ AliDielectronSignalBase::AliDielectronSignalBase(const char* name, const char* t
   fHistDataME(0),
   fHistRfactor(0),
   fPeakShapeObj(0x0),
-  fHistSimPM(0x0),
+//   fHistSimPM(0x0),
   fValues(6),
   fErrors(6),
   fIntMin(0),
@@ -301,7 +303,7 @@ TObject* AliDielectronSignalBase::DescribePeakShape(ESignalExtractionMethod meth
     if(!mcShape) { printf(" ERROR: No MC histogram passed. Returning. \n"); return 0x0; }
     data = fHistSignal->GetBinContent(fHistSignal->FindBin(massPOI));
     mc   = mcShape->GetBinContent(fHistSignal->FindBin(massPOI));
-    mcShape->Scale(data / mc );
+//     mcShape->Scale(data / mc );
     break;
 
   case kMCScaledInt:
@@ -310,7 +312,7 @@ TObject* AliDielectronSignalBase::DescribePeakShape(ESignalExtractionMethod meth
       printf(" WARNING: MC and signal histogram have different bin widths. \n");
     data = fHistSignal->Integral(fHistSignal->FindBin(fIntMin),fHistSignal->FindBin(fIntMax));
     mc   = mcShape->Integral(mcShape->FindBin(fIntMin),mcShape->FindBin(fIntMax));
-    mcShape->Scale(data / mc );
+//     mcShape->Scale(data / mc );
     break;
 
   case kMCFitted:
@@ -327,11 +329,12 @@ TObject* AliDielectronSignalBase::DescribePeakShape(ESignalExtractionMethod meth
     //  fit->SetParameters(-.2,5.,gMjpsi,.06,20);
     //  fit->SetParameters(1.,3.6,gMjpsi,.08,700);
     fit->SetParameters(0.4, 4.0, massPOI, 0.025, 1.3*nPOI);
-    fit->SetParLimits(0, 0.0,           1.           );
+    fit->SetParLimits(0, 0.001,           1.       );
     fit->SetParLimits(1, 0.01,          10.          );
     fit->SetParLimits(2, massPOI-0.02,  massPOI+0.02 );
     fit->SetParLimits(3, 0.001,          0.2         );
-    fit->SetParLimits(4, 0.2*nPOI,      2.0*nPOI     );
+    if(nPOI > 0.)  fit->SetParLimits(4, 0.2*nPOI,      2.0*nPOI     );
+    else  fit->FixParameter(4, 0. );
     parMass=2;
     parSigma=3;
     fHistSignal->Fit(fit,"RNI0");

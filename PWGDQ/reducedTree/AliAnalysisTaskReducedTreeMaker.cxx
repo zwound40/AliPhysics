@@ -1039,11 +1039,13 @@ void AliAnalysisTaskReducedTreeMaker::FillEventInfo()
   Float_t multVZERO = 0.0;
   for(Int_t i=0;i<32;++i) multVZERO +=  vzero->GetMultiplicity(i);
   eventInfo->fVZEROTotalMult[1] = multVZERO;
+  eventInfo->fVZEROTotalMultOnline[1] = vzero->GetV0ADecision();
   multVZERO = 0.0;
   for(Int_t i=32;i<64;++i) multVZERO +=  vzero->GetMultiplicity(i);
   eventInfo->fVZEROTotalMult[0] = multVZERO;
+  eventInfo->fVZEROTotalMultOnline[0] = vzero->GetV0CDecision();
   
-  if(fFillEventPlaneInfo) {
+if(fFillEventPlaneInfo) {
     AliReducedEventPlaneInfo* ep=new AliReducedEventPlaneInfo();     
     ep->fQvector[AliReducedEventPlaneInfo::kTPC][1][0] = AliDielectronVarManager::GetValue(AliDielectronVarManager::kQnTPCxH2);
     ep->fQvector[AliReducedEventPlaneInfo::kTPC][1][1] = AliDielectronVarManager::GetValue(AliDielectronVarManager::kQnTPCyH2);
@@ -1347,8 +1349,9 @@ void AliAnalysisTaskReducedTreeMaker::FillMCTruthInfo()
           
           // check if particle is J/psi daughter
           AliVParticle* mother = event->GetTrack(particle->GetMother());
-          Bool_t jpsiDaughter = (mother && mother->PdgCode() == 443);
+          Bool_t jpsiDaughter = (mother && TMath::Abs(mother->PdgCode() == 443)   );
           if(!jpsiDaughter){
+            
             if( etaAbs < 1.6) eventInfo->fNch[1]++;
             if( etaAbs < 1.0) eventInfo->fNch[3]++;
             else if( eta > 2.8 && eta < 5.1 ) eventInfo->fNch[5]++;   // V0A

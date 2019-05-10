@@ -58,6 +58,7 @@ AliReducedEventInfo::AliReducedEventInfo() :
   fSPDnSingle(0),
   fVZEROMult(),
   fVZEROTotalMult(),
+  fVZEROTotalMultOnline(),
   fZDCnEnergy(),
   fZDCpEnergy(),
   fZDCnTotalEnergy(),
@@ -92,6 +93,7 @@ AliReducedEventInfo::AliReducedEventInfo() :
   for(Int_t i=0; i<8; ++i) fNch[i]=0;
   for(Int_t i=0; i<64; ++i) fVZEROMult[i] = 0.0;
   for(Int_t i=0; i<2; ++i) fVZEROTotalMult[i] = 0.0;
+  for(Int_t i=0; i<2; ++i) fVZEROTotalMultOnline[i] = 0.0;
   for(Int_t i=0; i<10; ++i) fZDCnEnergy[i]=0.0;
   for(Int_t i=0; i<10; ++i) fZDCpEnergy[i]=0.0;
   for(Int_t i=0; i<2; ++i) fZDCnTotalEnergy[i]=0.0;
@@ -135,6 +137,7 @@ AliReducedEventInfo::AliReducedEventInfo(const Char_t* name, Int_t trackOption /
   fSPDnSingle(0),
   fVZEROMult(),
   fVZEROTotalMult(),
+  fVZEROTotalMultOnline(),
   fZDCnEnergy(),
   fZDCpEnergy(),
   fZDCnTotalEnergy(),
@@ -168,6 +171,7 @@ AliReducedEventInfo::AliReducedEventInfo(const Char_t* name, Int_t trackOption /
   for(Int_t i=0; i<8; ++i) fNch[i]=0;
   for(Int_t i=0; i<64; ++i) fVZEROMult[i] = 0.0;
   for(Int_t i=0; i<2; ++i) fVZEROTotalMult[i] = 0.0;
+  for(Int_t i=0; i<2; ++i) fVZEROTotalMultOnline[i] = 0.0;
   for(Int_t i=0; i<10; ++i) fZDCnEnergy[i]=0.0;
   for(Int_t i=0; i<10; ++i) fZDCpEnergy[i]=0.0;
   for(Int_t i=0; i<2; ++i) fZDCnTotalEnergy[i]=0.0;
@@ -237,6 +241,7 @@ void AliReducedEventInfo::CopyEventHeader(const AliReducedEventInfo* other) {
    for(Int_t i=0; i<8; ++i) fNch[i] = other->fNch[i];
    for(Int_t i=0; i<64; ++i) fVZEROMult[i] = other->fVZEROMult[i];
    for(Int_t i=0; i<2; ++i) fVZEROTotalMult[i] = other->fVZEROTotalMult[i];
+   for(Int_t i=0; i<2; ++i) fVZEROTotalMultOnline[i] = other->fVZEROTotalMultOnline[i];
    for(Int_t i=0; i<10; ++i) fZDCnEnergy[i] = other->fZDCnEnergy[i];
    for(Int_t i=0; i<10; ++i) fZDCpEnergy[i] = other->fZDCpEnergy[i];
    for(Int_t i=0; i<2; ++i) fZDCnTotalEnergy[i] = other->fZDCnTotalEnergy[i];
@@ -295,6 +300,7 @@ void AliReducedEventInfo::ClearEvent() {
   for(Int_t i=0; i<10; ++i) fMultiplicityEstimatorPercentiles[i]=-999.;
   for(Int_t i=0; i<64; ++i) fVZEROMult[i] = 0.0;
   for(Int_t i=0; i<2; ++i) fVZEROTotalMult[i] = 0.0;
+  for(Int_t i=0; i<2; ++i) fVZEROTotalMultOnline[i] = 0.0;
   for(Int_t i=0; i<10; ++i) fZDCnEnergy[i]=0.0;
   for(Int_t i=0; i<10; ++i) fZDCpEnergy[i]=0.0;
   for(Int_t i=0; i<2; ++i) fZDCnTotalEnergy[i]=0.0;
