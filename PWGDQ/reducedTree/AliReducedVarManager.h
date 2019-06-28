@@ -178,12 +178,14 @@ class AliReducedVarManager : public TObject {
    kMeanMultiplicity,
    kPYTHIAmultiplicity,
    kEPOSmultiplicity,
+   k100,
    kNReferenceMultiplicities
   };
 
   enum SmearingMethods {
    kNoSmearing=0,
    kPoissonSmearing,
+   kPlusMinus05,
    kNSmearingMethods
   };
   
@@ -451,6 +453,7 @@ class AliReducedVarManager : public TObject {
     kHighMultV0Triggered,
     kHighMultSPDTriggered,
     kINT7orHM,
+    kINT7orHMV0,
     kWhichTrigger,
     kNMCtruthJpsi,
     kNMCtruthJpsiLegs,
@@ -778,6 +781,7 @@ class AliReducedVarManager : public TObject {
   static Int_t fgPeriod;		      // run period
   static TH1* fgAvgMultVsVtx         [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (global)
   static TH2* fgAvgMultVsVtx_groups  [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (in run groups)
+  static TH1* fgAvgMultVsVtx_currentGroup  [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (run group of current run)
   static TH1* fgAvgMultVsRun         [kNMultiplicityEstimators];           // average multiplicity vs. run number
   static TH1* fgAlpha                [kNMultiplicityEstimators][2][kNReferenceMultiplicities][kNSmearingMethods][kNGenerators];  // Alpha factor as a function of multiplicity
   static TH1* fgRate;

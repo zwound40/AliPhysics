@@ -259,6 +259,7 @@ void AliReducedAnalysisJpsi2eeMult::Process() {
   for(Int_t i=AliReducedVarManager::kNRunWiseVariables; i<AliReducedVarManager::kNVars; ++i) fValues[i]=-9999.;
   
   // fill event information before event cuts
+
   AliReducedVarManager::FillEventInfo(fEvent, fValues);
   fHistosManager->FillHistClass("Event_BeforeCuts", fValues);
   for(UShort_t ibit=0; ibit<64; ++ibit) {

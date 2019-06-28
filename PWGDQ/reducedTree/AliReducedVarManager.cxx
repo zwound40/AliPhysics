@@ -164,10 +164,11 @@ std::vector<Int_t > AliReducedVarManager::fgPeriods;
 Int_t AliReducedVarManager::fgRunID = -1;
 Int_t AliReducedVarManager::fgRunGroup = -1;
 Int_t AliReducedVarManager::fgPeriod = -1;
-TH1* AliReducedVarManager::fgAvgMultVsVtx       [kNMultiplicityEstimators] = {0x0};
-TH2* AliReducedVarManager::fgAvgMultVsVtx_groups[kNMultiplicityEstimators] = {0x0};
-TH1* AliReducedVarManager::fgAvgMultVsRun       [kNMultiplicityEstimators] = {0x0};
-TH1* AliReducedVarManager::fgAlpha              [kNMultiplicityEstimators][2][kNReferenceMultiplicities][kNSmearingMethods][kNGenerators] = {0x0};
+TH1* AliReducedVarManager::fgAvgMultVsVtx              [kNMultiplicityEstimators] = {0x0};
+TH2* AliReducedVarManager::fgAvgMultVsVtx_groups       [kNMultiplicityEstimators] = {0x0};
+TH1* AliReducedVarManager::fgAvgMultVsVtx_currentGroup [kNMultiplicityEstimators] = {0x0};
+TH1* AliReducedVarManager::fgAvgMultVsRun              [kNMultiplicityEstimators] = {0x0};
+TH1* AliReducedVarManager::fgAlpha                     [kNMultiplicityEstimators][2][kNReferenceMultiplicities][kNSmearingMethods][kNGenerators] = {0x0};
 TH1* AliReducedVarManager::fgRate = 0x0;
 
 
@@ -479,28 +480,29 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
 
     if(fgUsedVars[kRunID] && fgRunNumbers.size() && fgRunID < 0  ){
       for( fgRunID = 0; fgRunNumbers[ fgRunID ] != fgCurrentRunNumber && fgRunID< (Int_t) fgRunNumbers.size() ; ++fgRunID );
-      if( fgRunID == fgRunNumbers.size()  ) cout << "RUN NUMBER NOT FOUND" << endl;
     }
     if( fgUsedVars[kRunGroup] && fgRunGroups.size()  && fgRunGroup < 0 ){
       for( auto runGroup : fgRunGroups ){
         if( runGroup.first <= fgCurrentRunNumber ) fgRunGroup = runGroup.second;
         else if( runGroup.first > fgCurrentRunNumber ) break;
       }
-      if( fgRunGroup < 0  )  cout << "RUN GROUP NOT FOUND" << endl;
     }
     if( fgUsedVars[kPeriod] && fgPeriods.size()  && fgPeriod < 0 ){
-      for( int iPeriod = 0; iPeriod< fgPeriods.size(); ++iPeriod ){
+      for( unsigned int iPeriod = 0; iPeriod< fgPeriods.size(); ++iPeriod ){
         if( fgPeriods.at(iPeriod) <= fgCurrentRunNumber ) fgPeriod = iPeriod;
         else if( fgPeriods.at(iPeriod) > fgCurrentRunNumber ) break;
       }
-      if( fgPeriod < 0  )  cout << "PERIOD NOT FOUND" << endl;
     }
-
-
 
     for( int iEstimator =0 ; iEstimator < kNMultiplicityEstimators ; ++iEstimator ){
       int estimator = iEstimator + kMultiplicity;
-      if( fgAvgMultVsRun[iEstimator] || fgAvgMultVsVtx[iEstimator] ){
+      if( fgAvgMultVsRun[iEstimator] || fgAvgMultVsVtx[iEstimator] || fgAvgMultVsVtx_groups[iEstimator] ){
+        if(fgAvgMultVsVtx_groups[iEstimator]){
+          fgAvgMultVsVtx_currentGroup[iEstimator] = fgAvgMultVsVtx_groups[iEstimator]->ProjectionY("fgAvgMultVsVtx_currentGroup[iEstimator]", fgRunGroup+1, fgRunGroup+1);
+
+        }
+
+
         for( int iReference = 0; iReference < kNReferenceMultiplicities; ++ iReference  ){
           switch ( iReference ){
             case kMaximumMultiplicity :
@@ -535,7 +537,6 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
                   fgRefMultVsRun [iEstimator][iReference] = 100.;
                   fgRefMultVsVtx [iEstimator][iReference] = 100.;
                 }
-              
               break;
             case kEPOSmultiplicity :
                 if(estimator == kVZEROATotalMult ) {
@@ -554,7 +555,10 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
                   fgRefMultVsRun [iEstimator][iReference] = 100.;
                   fgRefMultVsVtx [iEstimator][iReference] = 100.;
                 }
-              
+              break;
+            case k100:
+              fgRefMultVsRun [iEstimator][iReference] = 100.;
+              fgRefMultVsVtx [iEstimator][iReference] = 100.;
               break;
           }
         }
@@ -585,6 +589,7 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
   values[kHighMultV0Triggered]  = event->TriggerMask() & kHighMultV0 ?1:0;
   values[kHighMultSPDTriggered] = event->TriggerMask() & kHighMultSPD ?1:0;
   values[kINT7orHM]             = values[kINT7Triggered] || values[kHighMultV0Triggered] || values[kHighMultSPDTriggered];
+  values[kINT7orHMV0]           = values[kINT7Triggered] || values[kHighMultV0Triggered];
   values[kWhichTrigger]         = -1;
   if ( values[kINT7Triggered]  ) values[kWhichTrigger] = 0;
   else if ( values[kHighMultV0Triggered]  ) values[kWhichTrigger] = 1;
@@ -700,24 +705,28 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
 
   for( Int_t iEstimator = 0; iEstimator < kNMultiplicityEstimators; ++iEstimator){
     Int_t estimator = kMultiplicity + iEstimator;
-    if( fgAvgMultVsVtx[iEstimator] || fgAvgMultVsRun[iEstimator] ){
+    if( fgAvgMultVsVtx[iEstimator] || fgAvgMultVsRun[iEstimator]  || fgAvgMultVsVtx_currentGroup[iEstimator] ){
       
 //       Int_t vtxVar = kVtxZmc ? kVtxZmc : kVtxZ;
       Int_t vtxVar = kVtxZ;
       Int_t vtxBin = fgAvgMultVsVtx[iEstimator] ? fgAvgMultVsVtx[iEstimator]->GetXaxis()->FindBin( values[vtxVar] ) : -1;
-      Int_t vtxBin_groups = fgAvgMultVsVtx_groups[iEstimator] ? fgAvgMultVsVtx_groups[iEstimator]->GetYaxis()->FindBin( values[vtxVar] ) : -1;
+      Int_t vtxBin_groups = fgAvgMultVsVtx_currentGroup[iEstimator] ? fgAvgMultVsVtx_currentGroup[iEstimator]->GetXaxis()->FindBin( values[vtxVar] ) : -1;
+
+
       Int_t runBin = fgAvgMultVsRun[iEstimator] ? fgAvgMultVsRun[iEstimator]->GetXaxis()->FindBin( values[kRunID] ) : -1;
       Double_t multRaw = values[ estimator ];
       for( Int_t iCorrection = 0; iCorrection < kNCorrections; ++iCorrection  ){
+
         bool correctVtx        = fgAvgMultVsVtx[iEstimator] && ( iCorrection == kVertexCorr || iCorrection == kVertexAlphaCorr );
-        bool correctVtx_groups = fgAvgMultVsVtx_groups[iEstimator] && ( iCorrection == kVertexCorr_groups || iCorrection == kVertexAlphaCorr_groups );
+        bool correctVtx_groups = fgAvgMultVsVtx_currentGroup[iEstimator] && ( iCorrection == kVertexCorr_groups || iCorrection == kVertexAlphaCorr_groups );
         bool correctRun        = fgAvgMultVsRun[iEstimator] && ( iCorrection == kRunCorr || iCorrection == kRunAlphaCorr );
         bool correctAlpha      = iCorrection == kVertexAlphaCorr || iCorrection == kVertexAlphaCorr_groups || iCorrection == kRunAlphaCorr;
 
         for(Int_t iReference = 0 ; iReference <  kNReferenceMultiplicities; ++iReference ){
     
-          Double_t multCorr          = multRaw - 0.5 + gRandom->Rndm();
-          Double_t multCorrSmeared   = multRaw;
+          Double_t multCorr             = multRaw;
+          Double_t multCorrSmeared      = multRaw;
+          Double_t multCorrPM05         = multRaw - 0.5 + gRandom->Rndm();
           Double_t localAvg = 0 ;
           Double_t refMult = 0; 
           if( correctVtx  ){
@@ -725,17 +734,15 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
             refMult  = fgRefMultVsVtx[iEstimator][iReference];
           }
           else if( correctVtx_groups  ){
-            int group = values[kRunGroup];
-            TH1* prof = fgAvgMultVsVtx_groups[iEstimator]->ProjectionY( Form("%d", group), group+1, group+1    );
-
-            localAvg = prof->GetBinContent( vtxBin_groups );
+            localAvg = fgAvgMultVsVtx_currentGroup[iEstimator]->GetBinContent( vtxBin_groups );
             refMult  = fgRefMultVsVtx_groups[iEstimator][iReference];
           }
           else if(correctRun){
             localAvg = fgAvgMultVsRun[iEstimator]->GetBinContent( runBin );
             refMult  = fgRefMultVsRun[iEstimator][iReference];
           }
-          multCorr *= localAvg ? refMult/ localAvg : 1.;
+          multCorr     *= localAvg ? refMult/ localAvg : 1.;
+          multCorrPM05 *= localAvg ? refMult/ localAvg : 1.;
           Double_t deltaM = multCorr - multRaw;
           multCorrSmeared += (deltaM>0 ? 1. : -1.) * gRandom->Poisson(TMath::Abs(deltaM));
           
@@ -747,11 +754,15 @@ void AliReducedVarManager::FillEventInfo(BASEEVENT* baseEvent, Float_t* values, 
             
             Int_t indexNotSmeared = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kNoSmearing );
             Int_t indexSmeared    = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kPoissonSmearing );
+            Int_t indexPM05       = GetCorrectedMultiplicity( estimator, iCorrection, iReference, kPlusMinus05 );
             
             values[ indexNotSmeared ] = multCorr;
             values[ indexSmeared ]    = multCorrSmeared;
+            values[ indexPM05 ]       = multCorrPM05;
+
             fgUsedVars [indexNotSmeared] = kTRUE;
-            fgUsedVars [indexSmeared] = kTRUE;
+            fgUsedVars [indexSmeared]    = kTRUE;
+            fgUsedVars [indexPM05]       = kTRUE;
           }
           else{
             Int_t jCorrection = correctRun;
@@ -2604,17 +2615,14 @@ void AliReducedVarManager::SetDefaultVarNames() {
     "min(V0A,V0C)"
   };
 
-
-  
-  
-  
+ 
   TString corrections[kNCorrections] = {
     ", vertex corr. ",
-    ", vertex corr. (in groups)",
     ", gain loss corr.",
     ", vertex corr. ",
-    ", vertex corr. (in groups)",
     ", gain loss corr.",
+    ", vertex corr. (in groups)",
+    ", vertex corr. (in groups)"
   };
 
   TString referenceMultiplicities[kNReferenceMultiplicities] = {
@@ -2622,12 +2630,14 @@ void AliReducedVarManager::SetDefaultVarNames() {
     " (min mult)",
     " (mean mult)",
     " (PYTHIA)",
-    " (EPOS)"
+    " (EPOS)",
+    " (100)"
   };
 
   TString smearingMethods[kNSmearingMethods] = {
     "",
     ", Poisson smearing",
+    ", #pm 0.5"
   };
   
   TString generators[kNGenerators] = {
@@ -2772,7 +2782,8 @@ void AliReducedVarManager::SetDefaultVarNames() {
   fgVariableNames[kTRDTriggeredType]     = "event was triggered by TRD ele trigger"; fgVariableUnits[kTRDTriggeredType]     = "";
   fgVariableNames[kHighMultV0Triggered]  = "event was triggered with HighMultV0";    fgVariableUnits[kHighMultV0Triggered]  = "";
   fgVariableNames[kHighMultSPDTriggered] = "event was triggered with HighMultSPD";   fgVariableUnits[kHighMultSPDTriggered] = "";
-  fgVariableNames[kINT7orHM] = "event was triggered with MB or HM";   fgVariableUnits[kINT7orHM] = "";
+  fgVariableNames[kINT7orHM] = "event was triggered with MB, HMV0 or HMSPD";   fgVariableUnits[kINT7orHM] = "";
+  fgVariableNames[kINT7orHMV0] = "event was triggered with MB or HMV0";   fgVariableUnits[kINT7orHMV0] = "";
   fgVariableNames[kWhichTrigger] = "which trigger fired";   fgVariableUnits[kWhichTrigger] = "";
   
   
@@ -3369,6 +3380,7 @@ void AliReducedVarManager::SetMultiplicityProfile2D(TH2* profile, Int_t estimato
   }
   fgAvgMultVsVtx_groups[iEstimator] = (TH2*)profile->Clone( Form("profile_vtx_groups_%d", estimator  ));
   fgAvgMultVsVtx_groups[iEstimator]->SetDirectory(0x0);
+
 }
 
 
