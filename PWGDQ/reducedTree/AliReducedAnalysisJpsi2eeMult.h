@@ -40,6 +40,7 @@ public:
   void SetRunEventMixing(Bool_t option) {fOptionRunMixing = option;};
   void SetRunTrackRotation(Bool_t option);
   void SetNRotations(Int_t n) {fNRotations = n;};
+  void SetSeed(ULong_t seed) {fSeed = seed;};
   void SetRunPairing(Bool_t option) {fOptionRunPairing = option;};
   void SetRunOverMC(Bool_t option) {fOptionRunOverMC = option;};
   void SetRunLikeSignPairing(Bool_t option) {fOptionRunLikeSignPairing = option;}
@@ -76,7 +77,8 @@ public:
   const Char_t* GetLegCandidateMCcutName(Int_t i) const {return (i<fLegCandidatesMCcuts.GetEntries() ? fLegCandidatesMCcuts.At(i)->GetName() : "");}
   Int_t GetNJpsiMotherMCCuts() const {return fJpsiMotherMCcuts.GetEntries();}
   const Char_t* GetJpsiMotherMCcutName(Int_t i) const {return (i<fJpsiMotherMCcuts.GetEntries() ? fJpsiMotherMCcuts.At(i)->GetName() : "");}
-  
+  ULong_t GetSeed() const { return fSeed;}
+ 
 protected:
    AliHistogramManager* fHistosManager;   // Histogram manager
    AliMixingHandler*         fMixingHandler;    // mixing handler
@@ -84,6 +86,7 @@ protected:
    Bool_t fOptionRunMixing;    // true: run event mixing, false: no event mixing
    Bool_t fOptionRunRotation;    // true: run track rotation, false: no track rotation
    Int_t  fNRotations;
+   ULong_t fSeed;		// seed for gRandom (for Poisson smearing of multiplicity)
    Bool_t fOptionRunPairing;    // true: run pairing, false: only apply the track cuts
    Bool_t fOptionRunOverMC;  // true: trees contain MC info -> fill histos to compute efficiencies, false: run normally as on data
    Bool_t fOptionRunLikeSignPairing;   // true (default): performs the like sign pairing in addition to the opposite pairing

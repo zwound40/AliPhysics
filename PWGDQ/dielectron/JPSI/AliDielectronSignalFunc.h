@@ -38,6 +38,7 @@ public:
 
   virtual void Process(TObjArray * const arrhist);
   void ProcessCombinatorialPlusFit(TObjArray * const arrhist);      // subtract the combinatorial bg, then fit the SE +- distribution
+  void ProcessCombinatorialTimesFit(TObjArray * const arrhist);      // subtract the combinatorial bg, then fit the SE +- distribution
   void ProcessFit(TObjArray * const arrhist);      // fit the SE +- distribution
   void ProcessFitLS(TObjArray * const arrhist);       // substract the fitted SE like-sign background
   void ProcessFitEM(TObjArray * const arrhist);       // substract the fitted SE+ME like-sign background
@@ -50,6 +51,8 @@ public:
     fFitOpt.ToLower(); 
     if(!fFitOpt.Contains("s")) fFitOpt += "s";
   }
+  void SetExcludeRange(Double_t min, Double_t max) {fExcludeMin=min; fExcludeMax=max;}
+
   void SetDefaults(Int_t type);
     
   TF1*  GetSignalFunction()     const { return fFuncSignal;        }
@@ -69,6 +72,7 @@ public:
   
   
   TH1* GetCombinatorialBackgroundHistogram()      const {return fHistCombinatorialBackground;}
+  TH1* GetCorrelatedBackgroundHistogram()      const {return fHistCorrelatedBackground;}
 
 protected:
 
@@ -86,10 +90,14 @@ protected:
   //  Int_t    fPolDeg;                // polynomial degree of the background function
   Int_t    fDof;                   // degrees of freedom
   Double_t fChi2Dof;               // chi2/dof of the fitted inv mass spectra
-  
+  Double_t fExcludeMin;            // lower limit of the mass region to be excluded in the fit
+  Double_t fExcludeMax;            // upper limit of the mass region to be excluded in the fit
+
+ 
   static Int_t    fNparPeak;              // number of parameters for peak function
   static Int_t    fNparBgnd;              // number of parameters for background function
   TH1 *fHistCombinatorialBackground;     // histogram of combinatorial bg
+  TH1 *fHistCorrelatedBackground;     // histogram of correlated bg
 
   
   ClassDef(AliDielectronSignalFunc, 4)         // class for signal extraction using a combined bgrd+signal fit

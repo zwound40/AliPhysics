@@ -163,12 +163,8 @@ class AliReducedVarManager : public TObject {
   };
 
   enum Corrections {
-    kVertexCorr,
-    kRunCorr,
-    kVertexAlphaCorr,
-    kRunAlphaCorr,
-    kVertexCorr_groups,
-    kVertexAlphaCorr_groups,
+    k1DCorr,
+    k2DCorr,
     kNCorrections
   };
 
@@ -178,6 +174,9 @@ class AliReducedVarManager : public TObject {
    kMeanMultiplicity,
    kPYTHIAmultiplicity,
    kEPOSmultiplicity,
+   kDataMultiplicity,
+   kDataMultiplicity103,
+   kDataMultiplicity97,
    k100,
    kNReferenceMultiplicities
   };
@@ -190,12 +189,18 @@ class AliReducedVarManager : public TObject {
   };
   
   
+  enum Alphas{
+   kNoAlpha,
+   kPythiaAlpha,
+   kEposAlpha,
+   kNAlphas 
+  };
+
   enum Generators{
    kPYTHIA,
    kEPOS,
    kNGenerators 
   };
-
   
   static const Float_t fgkParticleMass[kNSpecies];
   static const Float_t fgkPairMass[AliReducedPairInfo::kNMaxCandidateTypes];
@@ -226,6 +231,8 @@ class AliReducedVarManager : public TObject {
     kRunID,             // variable for easy filling of histograms vs. run number, without empty bins
     kRunGroup,          // group that run belongs to for tracklets vs Vtx profile
     kPeriod,          // period
+    kTriggerGroup,    // trigger efficiency group
+    kEffGroup,          // group that period belongs to for efficiency correction 
     kRate,              // Interaction Rate
     kBeamEnergy,        // LHC beam energy
     kDetectorMask,      // detector mask
@@ -341,13 +348,15 @@ class AliReducedVarManager : public TObject {
     kNTPCclusters,    // number of TPC clusters
     kMultiplicity,
     kSPDntracklets = kMultiplicity,
+    kSPDntrackletsgt0,
+    kSPDntrackletsgt0_09,
+    kSPDntrackletsgt0_11,
     kSPDntracklets05,
     kSPDntracklets08,
     kSPDntracklets16,
     kSPDntrackletsOuterEta,
     kSPDntrackletsEtaBin,
-    kSPDnTracklets10EtaVtxCorr = kSPDntrackletsEtaBin + 32,
-    kVZEROTotalMult,
+    kVZEROTotalMult = kSPDntrackletsEtaBin + 32,
     kVZEROATotalMult,
     kVZEROCTotalMult,
     kVZEROACTotalMult,
@@ -356,7 +365,7 @@ class AliReducedVarManager : public TObject {
     kNMultiplicityEstimators = kCorrectedMultiplicity - kMultiplicity,
   //  kSPDFiredChips = kNchFromData + kNMultiplicityEstimators, // SPD fired chips in first and second layer
 //     kSPDFiredChips = kCorrectedMultiplicity + kNMultiplicityEstimators * ( 1 + kNCorrections * kNReferenceMultiplicities * kNSmearingMethods), // SPD fired chips in first and second layer
-    kSPDFiredChips = kCorrectedMultiplicity + kNMultiplicityEstimators * ( 1 + kNGenerators * kNCorrections * kNReferenceMultiplicities * kNSmearingMethods), // SPD fired chips in first and second layer
+    kSPDFiredChips = kCorrectedMultiplicity + kNMultiplicityEstimators * ( 1 + kNAlphas * kNCorrections * kNReferenceMultiplicities * kNSmearingMethods), // SPD fired chips in first and second layer
     kITSnClusters=kSPDFiredChips+2,        // number of ITS clusters in each layer
     kSPDnSingleClusters=kITSnClusters+6,   // number of clusters in SPD layer 1 not mached to tracklets from layer 2
     kEventMixingId,     // Id of the event mixing category 
@@ -458,15 +467,14 @@ class AliReducedVarManager : public TObject {
     kNMCtruthJpsi,
     kNMCtruthJpsiLegs,
     kTriggerEff,
-    kOneOverTriggerEff   = kTriggerEff + kNGenerators,
-    kOneOverTriggerEffSq = kOneOverTriggerEff + kNGenerators,
-    kVtxEff = kOneOverTriggerEffSq + kNGenerators,
+    kOneOverTriggerEff,
+    kVtxEff,
     kOneOverVtxEff,
-    kOneOverVtxEffSq,
+    kINELgt0Eff,
+    kOneOverINELgt0Eff,
     kEventEff,                     // event efficiency
-    kOneOverEventEff   = kEventEff + kNGenerators,          // 1 / event efficiency (correction factor) 
-    kOneOverEventEffSq = kOneOverEventEff + kNGenerators,   // 1 / event efficiency squared (correction factor) 
-    kNEventVars        = kOneOverEventEffSq + kNGenerators, // number of event variables  
+    kOneOverEventEff ,          // 1 / event efficiency (correction factor) 
+    kNEventVars        , // number of event variables  
     // Particle variables --------------------------------------
     // Common pair/track variables
     kPt=kNEventVars,
@@ -544,11 +552,14 @@ class AliReducedVarManager : public TObject {
     kOpAngDcaPtCorr,            // opening angle, corrected for DCA and pT effects
     kPairEff,                     // pair efficiency
     kOneOverPairEff = kPairEff+64,             // 1 / pair efficiency (correction factor) 
-    kOneOverPairEffSq = kOneOverPairEff+64,             // 1 / pair efficiency squared (correction factor)
+    kOneOverPairEffSq,             // 1 / pair efficiency squared (correction factor)
     kPairEventEff = kOneOverPairEffSq+64,                     // pair efficiency * event efficiency
-    kOneOverPairEventEff = kPairEventEff+(64 * kNGenerators),             // 1 / pair efficiency * event efficiency (correction factor) 
-    kOneOverPairEventEffSq = kOneOverPairEventEff+(64 * kNGenerators),             // 1 / pair efficiency *event efficiency squared (correction factor)
-    kPairLegITSchi2 = kOneOverPairEventEffSq+(64 * kNGenerators),              // the ITS chi2 for the pair legs, used in correlations between pair legs
+    kOneOverPairEventEff = kPairEventEff+64,             // 1 / pair efficiency * event efficiency (correction factor) 
+    kPairEventEff09 = kOneOverPairEventEff+64,                     // pair efficiency * event efficiency
+    kOneOverPairEventEff09 = kPairEventEff09+64,             // 1 / pair efficiency * event efficiency (correction factor) 
+    kPairEventEff11 = kOneOverPairEventEff09+64,                     // pair efficiency * event efficiency
+    kOneOverPairEventEff11 = kPairEventEff11+64,             // 1 / pair efficiency * event efficiency (correction factor) 
+    kPairLegITSchi2 = kOneOverPairEventEff11+64,              // the ITS chi2 for the pair legs, used in correlations between pair legs
     kPairLegTPCchi2=kPairLegITSchi2+3,              // the TPC chi2 for the pair legs, used in correlations between pair legs
     kTrack1Pt,
     kTrack2Pt,
@@ -715,22 +726,24 @@ class AliReducedVarManager : public TObject {
 
   static void SetTPCelectronCorrectionMaps(TH2F* centroidMap, TH2F* widthMap, Variables xVarDep, Variables yVarDep);
   static void AddPairEfficiencyMap(TH2* effMap, Variables xVarDep, Variables yVarDep);
-  static void SetTriggerEfficiencyMap(TH1* effMap, Variables varDep,  Int_t generator);
+  static void SetTriggerEfficiencyMap(TH2* effMap, Variables xVarDep,   Variables yVarDep);
   static void SetVertexEfficiencyMap(TH1* effMap, Variables varDep);
+  static void SetINELgt0EfficiencyMap(TH2* effMap, Variables xVarDep, Variables yVarDep);
   static void SetLHCDataInfo(TH1F* totalLumi, TH1F* totalInt0, TH1F* totalInt1, TH1I* fillNumber);
   static void SetGRPDataInfo(TH1I* dipolePolarity, TH1I* l3Polarity, TH1I* timeStart, TH1I* timeStop);
   static void SetRunNumbers( TString runNumbers );
-  static void SetMultiplicityProfile( TH1* profile, Int_t estimator = kMultiplicity, Int_t var = kVtxZ );
-  static void SetMultiplicityProfile2D( TH2* profile, Int_t estimator = kMultiplicity, Int_t var1 = kVtxZ, Int_t var2 = kRunGroup );
+  static void SetMultiplicityProfile( TH1* profile, Int_t estimator = kMultiplicity, Variables var = kVtxZ );
+  static void SetMultiplicityProfile2D( TH2* profile, Int_t estimator = kMultiplicity, Variables var1 = kVtxZ, Variables var2 = kRunGroup );
   static void SetAlphaProfile( TH1* alpha, Int_t estimator=kMultiplicity , Int_t correctionMethod=0, Int_t referenceMultiplicity=0, Int_t smearing=0, Int_t generator=0);
   static void SetRateHist( TH1* rate );
   static void SetVZEROCalibrationPath(const Char_t* path);
   static void SetCalibrateVZEROqVector(Bool_t option);
   static void SetRecenterVZEROqVector(Bool_t option);
-  static Int_t GetCorrectedMultiplicity( Int_t estimator=kMultiplicity, Int_t correction=0, Int_t reference=0, Int_t smearing=0, Int_t generator=0 );
+  static Int_t GetCorrectedMultiplicity( Int_t estimator=kMultiplicity, Int_t correction=0, Int_t reference=0, Int_t smearing=0, Int_t alpha=0 );
   static void AddRunGroup( Int_t runNumber, Int_t runGroup);
+  static void AddEffGroup( Int_t period, Int_t effGroup);
   static void AddPeriod( Int_t runNumber );
-
+  static void SetSeed( ULong_t seed);
   
  private:
   static Int_t     fgCurrentRunNumber;               // current run number
@@ -759,12 +772,17 @@ class AliReducedVarManager : public TObject {
   static std::vector<Variables> fgPairEffMapVarDependencyX;        // varX in the pair eff maps
   static std::vector<Variables> fgPairEffMapVarDependencyY;        // varX in the pair eff maps
   
-  static TH1* fgTriggerEffMap[kNGenerators];  // 2D event efficiency map
-  static Variables fgTriggerEffMapVarDependency;                // varX in the event eff maps
+  static TH2* fgTriggerEffMap;  // 2D trigger efficiency map
+  static Variables fgTriggerEffMapVarDependencyX;                // varX in the trigger eff maps
+  static Variables fgTriggerEffMapVarDependencyY;                // varX in the trigger eff maps
   
-  static TH1* fgVtxEffMap;  // 2D event efficiency map
-  static Variables fgVtxEffMapVarDependency;                // varX in the event eff maps
+  static TH1* fgVtxEffMap;  // 1D vtx efficiency map
+  static Variables fgVtxEffMapVarDependency;                // varX in the vtx eff maps
   
+  static TH2* fgINELgt0EffMap;  // 2D INEL>0 efficiency map
+  static Variables fgINELgt0EffMapVarDependencyX;                // varX in the INEL>0 eff maps
+  static Variables fgINELgt0EffMapVarDependencyY;                // varY in the INEL>0 eff maps
+
   static TH1F* fgRunTotalLuminosity;      // total luminosity, GRP/GRP/LHCData::GetLumiAliceSBDelivered()
   static TH1F* fgRunTotalIntensity0;        // total intensity beam 1, GRP/GRP/LHCData::GetTotalIntensity(0)
   static TH1F* fgRunTotalIntensity1;         // total intensity beam 2, GRP/GRP/LHCData::GetTotalIntensity(1)
@@ -776,20 +794,23 @@ class AliReducedVarManager : public TObject {
   static std::vector<Int_t> fgRunNumbers;     // vector with run numbers (for histograms vs. run number)
   static std::map<Int_t, Int_t> fgRunGroups;  // map containing the definition of the run groups for the tracklets vs. vertex profiles
   static std::vector<Int_t> fgPeriods;               // vector containing the run numbers where new periods start 
+  static std::map<Int_t, Int_t> fgEffGroups;  // map containing the definition of the period groups for the efficiency correction
   static Int_t fgRunID;                       // run ID
   static Int_t fgRunGroup;		      // run group (for tracklets vs. vtx profile)
   static Int_t fgPeriod;		      // run period
-  static TH1* fgAvgMultVsVtx         [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (global)
-  static TH2* fgAvgMultVsVtx_groups  [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (in run groups)
-  static TH1* fgAvgMultVsVtx_currentGroup  [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (run group of current run)
-  static TH1* fgAvgMultVsRun         [kNMultiplicityEstimators];           // average multiplicity vs. run number
-  static TH1* fgAlpha                [kNMultiplicityEstimators][2][kNReferenceMultiplicities][kNSmearingMethods][kNGenerators];  // Alpha factor as a function of multiplicity
+  static Int_t fgEffGroup;		      // period group (for efficiency correction)
+  static TH1* fgAvgMult1D         [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (global)
+  static TH2* fgAvgMult2D         [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (in run groups)
+  static TH1* fgAvgMult2D_current [kNMultiplicityEstimators];        // average multiplicity vs. z-vertex position (run group of current run)
+  static TH1* fgAlpha             [kNMultiplicityEstimators][kNCorrections][kNReferenceMultiplicities][kNSmearingMethods][kNAlphas];  // Alpha factor as a function of multiplicity
   static TH1* fgRate;
   
+  static Variables fgMultDependencyVar1D [kNMultiplicityEstimators]; 
+  static Variables fgMultDependencyVar2DX [kNMultiplicityEstimators]; 
+  static Variables fgMultDependencyVar2DY [kNMultiplicityEstimators]; 
   
-  static Double_t fgRefMultVsVtx  [kNMultiplicityEstimators] [kNReferenceMultiplicities];  // reference multiplicity for z-vertex correction (global)
-  static Double_t fgRefMultVsVtx_groups  [kNMultiplicityEstimators] [kNReferenceMultiplicities];  // reference multiplicity for z-vertex correction (for groups of runs)
-  static Double_t fgRefMultVsRun  [kNMultiplicityEstimators] [kNReferenceMultiplicities];  // reference multiplicity for run correction
+  static Double_t fgRefMult1D  [kNMultiplicityEstimators] [kNReferenceMultiplicities];  // reference multiplicity for z-vertex correction (global)
+  static Double_t fgRefMult2D  [kNMultiplicityEstimators] [kNReferenceMultiplicities]; // reference multiplicity for z-vertex correction (for groups of runs)
   static TString fgVZEROCalibrationPath;       // path to the VZERO calibration histograms
   static TProfile2D* fgAvgVZEROChannelMult[64];       // average multiplicity in VZERO channels vs (vtxZ,centSPD)
   static TProfile2D* fgVZEROqVecRecentering[4];       // (vtxZ,centSPD) maps of the VZERO A and C recentering Qvector offsets

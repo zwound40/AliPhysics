@@ -32,6 +32,7 @@ AliReducedAnalysisJpsi2eeMult::AliReducedAnalysisJpsi2eeMult() :
   fOptionRunMixing(kTRUE),
   fOptionRunRotation(kFALSE),
   fNRotations(1),
+  fSeed(0),
   fOptionRunPairing(kTRUE),
   fOptionRunOverMC(kFALSE),
   fOptionRunLikeSignPairing(kTRUE),
@@ -66,6 +67,7 @@ AliReducedAnalysisJpsi2eeMult::AliReducedAnalysisJpsi2eeMult(const Char_t* name,
   fOptionRunMixing(kTRUE),
   fOptionRunRotation(kFALSE),
   fNRotations(1),
+  fSeed(0),
   fOptionRunPairing(kTRUE),
   fOptionRunOverMC(kFALSE),
   fOptionRunLikeSignPairing(kTRUE),
@@ -215,6 +217,11 @@ void AliReducedAnalysisJpsi2eeMult::Init() {
   // initialize stuff
   //
    AliReducedVarManager::SetDefaultVarNames();
+   if( fSeed ){
+//     AliReducedVarManager::SetSeed( fSeed );
+     gRandom->SetSeed( fSeed );
+    cout << "setting seed to " << fSeed<< endl;
+   }
    // make sure variables needed to create jpsi candidate objects are filled
    if(fOptionStoreJpsiCandidates) {
       AliReducedVarManager::SetUseVariable(AliReducedVarManager::kPt);
@@ -569,13 +576,14 @@ void AliReducedAnalysisJpsi2eeMult::RunSameEventPairing(TString pairClass /*="Pa
          
             // verify that the two current tracks have at least 1 common bit
             if(!(pTrack->GetFlags() & pTrack2->GetFlags())) continue;
-            if(fOptionRunRotation){
+       /*     if(fOptionRunRotation){
               AliReducedTrackInfo pTrackCopy((*pTrack));
               AliReducedTrackInfo pTrack2Copy((*pTrack2));
               for(int i=0; i<fNRotations; ++i){
                 RunTrackRotation(pTrackCopy, pTrack2Copy, 0);
               }
             }
+	*/
             AliReducedVarManager::FillPairInfo(pTrack, pTrack2, AliReducedPairInfo::kJpsiToEE, fValues);
             if(IsPairSelected(fValues)) {
                FillPairHistograms(pTrack->GetFlags() & pTrack2->GetFlags(), 0, pairClass);       // 0 is for ++ pairs 
@@ -605,13 +613,14 @@ void AliReducedAnalysisJpsi2eeMult::RunSameEventPairing(TString pairClass /*="Pa
          
             // verify that the two current tracks have at least 1 common bit
             if(!(nTrack->GetFlags() & nTrack2->GetFlags())) continue;
-            if(fOptionRunRotation){
+          /*  if(fOptionRunRotation){
               AliReducedTrackInfo nTrack2Copy((*nTrack2));
               AliReducedTrackInfo nTrackCopy((*nTrack));
               for(int i=0; i<fNRotations; ++i){
                 RunTrackRotation(nTrack2Copy, nTrackCopy, 2);
               }
             }
+          */
             AliReducedVarManager::FillPairInfo(nTrack, nTrack2, AliReducedPairInfo::kJpsiToEE, fValues);
             if(IsPairSelected(fValues)) {
                FillPairHistograms(nTrack->GetFlags() & nTrack2->GetFlags(), 2, pairClass);      // 2 is for -- pairs
@@ -949,7 +958,4 @@ void AliReducedAnalysisJpsi2eeMult::RunTrackRotation(AliReducedTrackInfo &pTrack
 
 void AliReducedAnalysisJpsi2eeMult::SetRunTrackRotation( Bool_t option){
   fOptionRunRotation = option;
-
-  if(fOptionRunRotation) gRandom->SetSeed();
-
 }

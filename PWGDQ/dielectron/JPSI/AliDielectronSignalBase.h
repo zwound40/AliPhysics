@@ -45,7 +45,8 @@ public:
     kEventMixing,
     kEventMixingFit,
     kRotation,
-    kCombinatorialPlusFit
+    kCombinatorialPlusFit,
+    kCombinatorialTimesFit
   };
 
   enum ESignalExtractionMethod {
